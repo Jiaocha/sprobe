@@ -49,7 +49,34 @@ Sprobe 前端 Console 采用 Vue 3 + Tailwind CSS 构建，采用经典卡片与
 
 ## 二、5 分钟快速上手指南 (Quick Start)
 
-### 步骤 1：编译或获取二进制文件
+### 选项 A：使用官方预编译包或一键脚本（生产 VPS 强烈推荐）
+
+> ⚠️ **重要提示**：Rust 编译属于高 CPU 与高内存密集型任务，**切勿在 1核1G 或 512MB 内存的低配生产 VPS 上执行 `cargo build`**，极易导致系统 OOM 甚至内核假死崩溃！
+> 官方 GitHub Releases 提供了经由 GitHub Actions 云端构建的全架构静态链接二进制包。
+
+#### 1. Linux 一键静默安装（自动识别架构并配置 Systemd）
+```bash
+# 替换为您的控制台端点与节点展示名称
+curl -fsSL https://sprobe-console.pages.dev/install.sh | sudo bash -s -- \
+  --endpoint https://sprobe-console.pages.dev/api/v1/ingest \
+  --name "US-SanJose-01" \
+  --interval 10
+```
+
+#### 2. 手动下载预编译静态二进制包 (musl)
+从 [GitHub Releases](https://github.com/Jiaocha/sprobe/releases) 获取无任何依赖的静态二进制包：
+```bash
+# 以 Linux x86_64 为例：
+curl -fsSL https://github.com/Jiaocha/sprobe/releases/latest/download/sprobe-x86_64-unknown-linux-musl.tar.gz | tar -xz
+sudo mv sprobe /usr/local/bin/
+
+# 快速测试
+sprobe --once
+```
+
+---
+
+### 选项 B：从源码编译与本地开发调试（开发环境）
 
 确保本机已安装 Rust 1.85+（推荐 1.95+）：
 
@@ -422,7 +449,30 @@ Sprobe Console 专为提供媲美哪吒监控（Nezha）的流畅 VPS 监控体�
   - 双折线 SVG 动态面积走势图（Rx 蓝线 vs Tx 绿线），直观呈现突发流量脉冲。
   - 物理接口与虚拟设备细分列表，展示每个网卡的 UP/DOWN 状态与丢包/错包计数。
 
-### 2. 生产环境构建与 Nginx 反向代理
+### 2. Cloudflare Pages 边缘部署（推荐：0 成本免运维架构）
+
+Sprobe 控制台原生支持构建为 Cloudflare Pages 全托管应用，并通过 `console/public/_worker.js` 提供高性能边缘 API 服务。
+
+#### 零 KV 写入架构 (Zero-KV-Write Guard)
+- **背景**：Cloudflare Workers KV 免费套餐每天仅提供 1,000 次写操作。常规探针高频心跳会导致每日写配额迅速超标并抛出 HTTP 429 异常；
+- **优化实现**：Sprobe 边缘端服务完全启用了 `ZERO_KV_WRITE_MODE`：
+  - 数据上报（`/api/v1/ingest`）和心跳（`/api/v1/heartbeat`）**完全不向 Workers KV 写入**；
+  - 探针数据全部保存在免费且无写入上限的 **Cloudflare Cache API (`caches.default`)** 与边缘实例热内存中；
+  - 前端拉取（`/api/readonly/overview` 与 `/api/readonly/nodes/:id`）均优先从 Cache API/内存加载；
+  - **实现效果**：单日 KV 写操作归零，杜绝 429 报错，无需花钱升级付费套餐，**永久 0 成本稳定运行**。
+
+#### 演示站安全防护体系（访客只读 + 管理员口令保护）
+为方便公开演示同时防止恶意篡改，Console 实现了细粒度的读写安全隔离：
+- **访客只读模式 (Read-Only)**：未认证访客可以自由查看服务器大屏、硬件利用率、实时网络走势图；
+- **写操作强制口令拦截**：
+  - 点击「添加服务器」、「修改服务器配置」、「下线/删除节点」、「保存告警规则」或「出厂重置」时，系统自动弹出管理认证窗口；
+  - 默认管理口令为：`sprobe2026`；
+  - 口令可在控制台「设置」页面的「演示环境安全与管理权限控制」卡片中自定义修改或一键重置；
+  - 验证成功后在客户端生成安全凭证，顶栏展示管理员已解锁状态，支持随时一键上锁退出。
+
+---
+
+### 3. 生产环境构建与 Nginx 反向代理（私有化服务器部署）
 
 1. **构建前端产物**：
    ```bash
@@ -493,6 +543,29 @@ exclude_interfaces = ["docker*", "veth*", "br-*", "cni*"]
 
 **不会**。Sprobe 内置持久化 WAL 机制。当网络断开时，快照将严格按时间戳写入磁盘 WAL 队列。网络恢复连通后，探针将在后台自动分批重新推送，并保证幂等上报不重不漏。
 
+### Q5: 为什么强烈反对在生产 VPS（特别是低配 1C1G / 512MB）上编译 Rust？
+
+Rust 语言的编译器（`rustc`）在执行单态化（Monomorphization）、宏展开以及 LTO 链接优化时，需要分配大量连续内存（通常峰值超过 1.5GB ~ 2GB）并全力跑满所有 CPU 核心。
+若在小内存 VPS 上直接执行 `cargo build`，容易瞬间耗尽内存触发 Linux 内核的 **OOM Killer**，强行杀死编译进程甚至连带杀死 SSH、Web 服务，严重时导致主机失联死锁。
+**推荐方案**：
+- 使用官方 GitHub Releases 自动编译发布的二进制；
+- 或使用官方 `install.sh` 一键脚本；
+- 仅在配置充裕的本地 PC、开发机或 CI/CD（GitHub Actions）流水线中构建二进制，然后再分发部署。
+
+### Q6: Cloudflare Workers KV 免费额度只有 1,000 次/天，如何保证 0 成本永不超限？
+
+Sprobe 边缘端服务在 `_worker.js` 中内置了 **Zero-KV-Write Guard** 机制：
+1. 节点实时快照与心跳完全切换至 Cloudflare 官方的 **Cache API (`caches.default`)** 与边缘常驻热内存；
+2. Cache API 完全免费且无写次数上限，天然适合 3~5 分钟生命周期的监控快照更新；
+3. 单日写入 KV 次数严格锁定为 0，彻底免疫 HTTP 429 配额耗尽错误，无需每月支付 $5 升级计费计划。
+
+### Q7: 在线演示站如何防止恶意用户乱删服务器或修改告警？
+
+Sprobe Console 实装了前后端联动的安全防护：
+1. **只读保护**：默认所有非管理员访问均为只读，顶栏标有「演示模式」安全徽标；
+2. **敏感操作锁**：任何增删节点、编辑标签与下线动作均需通过管理员口令（默认口令 `sprobe2026`）验证；
+3. **接口级拦截**：修改系统通知设置（`/api/settings`）需要传递 Header 凭证，非法调用直接返回 401 Unauthorized。
+
 ---
 
-*文档版本：v1.0 (2026-11-21) | 适配组件：Sprobe Agent 1.0.x / Console 1.0.x*
+*文档版本：v1.1 (2026-11-21) | 适配组件：Sprobe Agent 1.0.x / Console 1.0.x*

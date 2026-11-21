@@ -1,5 +1,7 @@
 # Sprobe
 
+[![Release](https://img.shields.io/github/v/release/Jiaocha/sprobe?color=brightgreen)](https://github.com/Jiaocha/sprobe/releases)
+[![CI](https://github.com/Jiaocha/sprobe/actions/workflows/ci.yml/badge.svg)](https://github.com/Jiaocha/sprobe/actions/workflows/ci.yml)
 [![Rust](https://img.shields.io/badge/Rust-1.85%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/License-MIT%2FApache--2.0-blue.svg)](LICENSE)
 [![Vue](https://img.shields.io/badge/Vue-3.5%2B-emerald.svg)](https://vuejs.org/)
@@ -10,17 +12,24 @@ Sprobe 是一款极轻量、高性能、跨平台的现代服务器状态监控�
 
 Sprobe 配套超轻量现代化前端 Console（打包体积仅 **~61 KiB gzip**，可零成本托管于 Cloudflare Pages 边缘网络），深度融合了**哪吒监控（Nezha）**的优秀交互特性与现代设计美学，提供经典服务器卡片网格与专业运维表格双视图、地区与国旗徽标识别、VPS 月结出账流量配额防超额告警、全球骨干网延迟矩阵以及实时网络瞬时带宽双折线面积图。
 
-- 🌐 **在线演示体验**: [https://sprobe-console.pages.dev](https://sprobe-console.pages.dev)
+- 🌐 **在线演示体验**: [https://sprobe-console.pages.dev](https://sprobe-console.pages.dev) *(访客只读模式，管理口令：`sprobe2026`)*
 - 🚀 **极速一键接入 (Linux)**:
 ```bash
 curl -fsSL https://sprobe-console.pages.dev/install.sh | sudo bash -s -- --endpoint https://sprobe-console.pages.dev/api/v1/ingest --name "My-Server"
 ```
+- 📦 **全平台预编译二进制包**: [GitHub Releases (最新 v0.1.2)](https://github.com/Jiaocha/sprobe/releases) *(免编译即开即用)*
 
 ---
 
 ## 核心特性矩阵
 
-- **跨平台单二进制**：纯 Rust 开发，无外部运行时依赖，统一抽象 Linux (`/proc`, `/sys`) 与 Windows (Win32 API / PDH) 底层采集。
+- **跨平台静态单二进制（免编译即用）**：纯 Rust 开发，无外部运行时依赖，官方提供 Linux (musl/gnu)、macOS、Windows 全平台静态预编译包，**无需在资源紧缺的 VPS 上进行沉重的本地编译**。
+- **Cloudflare 0 成本高并发架构 (Zero-KV-Write Guard)**：
+  - 上报与广播完全基于 Cloudflare **Cache API (`caches.default`)** 与边缘常驻热内存；
+  - **彻底规避 Workers KV 每日 1,000 次写入配额限制**，单日 KV 写操作归零，杜绝 429 报错，无需升级付费套餐，真正 0 成本稳定运行。
+- **演示站安全防护体系**：
+  - 前端控制台默认开启**访客只读模式**，所有访客可自由浏览监控大屏与详细指标；
+  - 增删服务器、修改标签、下线节点、配置通知规则等敏感写操作，均强制受管理员口令保护（默认口令 `sprobe2026`，支持后台自定义）。
 - **借鉴哪吒监控（Nezha）标志性体验**：
   - **国旗与地区徽标**：根据配置标签（如 `region = "US"`、`CN`、`JP`、`HK`、`SG`、`DE` 等）自动匹配对应国家/地区旗帜。
   - **卡片网格与表格双视图**：卡片视图一屏总览每台 VPS 核心负荷与流量，表格模式适合大规模集群过滤筛选。
@@ -32,50 +41,82 @@ curl -fsSL https://sprobe-console.pages.dev/install.sh | sudo bash -s -- --endpo
 
 ---
 
-## 快速开始
+## 快速安装与使用
 
-### 1. 编译并单次运行探针
+### 方式 A：一键快速安装（推荐，自动识别架构并配置 Systemd）
+
+适用于 Debian / Ubuntu / CentOS / Rocky / Alpine 等 Linux 系统：
+
+```bash
+# 替换为您自己的接入端地址与节点名称
+curl -fsSL https://sprobe-console.pages.dev/install.sh | sudo bash -s -- \
+  --endpoint https://sprobe-console.pages.dev/api/v1/ingest \
+  --name "US-SanJose-01" \
+  --interval 10
+```
+
+脚本将自动完成：检测架构（x86_64 或 aarch64）→ 下载对应 musl 静态二进制 → 注册独立 `sprobe` 运行用户 → 生成配置文件 `/etc/sprobe/sprobe.toml` → 启动并自启 Systemd 服务。
+
+---
+
+### 方式 B：直接下载预编译发布包（无需 Rust 编译环境）
+
+无需在低配服务器上安装 Rust 编译环境，直接从 [GitHub Releases](https://github.com/Jiaocha/sprobe/releases) 获取静态单文件：
+
+| 平台 / 架构 | 发布包名称 | 适用环境 |
+| :--- | :--- | :--- |
+| **Linux x86_64** (推荐) | `sprobe-x86_64-unknown-linux-musl.tar.gz` | 所有 Linux 发行版（全静态链接，无 glibc 依赖） |
+| **Linux aarch64** (ARM) | `sprobe-aarch64-unknown-linux-musl.tar.gz` | Oracle ARM / 树莓派 / 华为云鲲鹏等 |
+| **Linux x86_64** (gnu) | `sprobe-x86_64-unknown-linux-gnu.tar.gz` | 依赖 glibc 2.17+ 的 Linux 环境 |
+| **Windows x86_64** | `sprobe-x86_64-pc-windows-msvc.zip` | Windows 10/11 / Windows Server |
+| **macOS (Apple Silicon)**| `sprobe-aarch64-apple-darwin.tar.gz` | M1/M2/M3/M4 系列 Mac |
+| **macOS (Intel)** | `sprobe-x86_64-apple-darwin.tar.gz` | Intel 系列 Mac |
+
+**手动部署命令示例 (Linux x86_64)**：
+```bash
+# 1. 下载并解压 musl 静态二进制
+curl -fsSL https://github.com/Jiaocha/sprobe/releases/latest/download/sprobe-x86_64-unknown-linux-musl.tar.gz | tar -xz
+sudo mv sprobe /usr/local/bin/
+
+# 2. 单次测试采集与脱敏诊断
+sprobe --once
+sprobe --diagnose
+
+# 3. 快速生成标准加固的 Systemd 服务
+sudo mkdir -p /etc/sprobe
+sudo curl -fsSL https://github.com/Jiaocha/sprobe/releases/latest/download/sprobe.toml -o /etc/sprobe/sprobe.toml
+sprobe -c /etc/sprobe/sprobe.toml --generate-systemd | sudo tee /etc/systemd/system/sprobe.service
+
+# 4. 启动服务
+sudo systemctl daemon-reload && sudo systemctl enable --now sprobe
+```
+
+---
+
+### 方式 C：从源码本地构建
+
+> ⚠️ **注意**：Rust 编译阶段对 CPU 和内存有一定要求，**请勿在 512MB / 1GB 内存的低配生产 VPS 上直接执行编译**，建议在本地开发机编译后分发二进制。
 
 ```bash
 # 编译 Release 二进制产物
 cargo build --release
 
-# 单次采集并输出当前机器硬件与状态快照（JSON 格式）
-./target/release/sprobe --once
-
-# 运行脱敏系统诊断（检查硬件、内核、采集能力与权限）
-./target/release/sprobe --diagnose
+# 产物位置：./target/release/sprobe
 ```
 
-### 2. 启动探针常驻守护进程
+---
+
+### 本地调试与控制台启动
 
 ```bash
-# 前台启动（指定配置文件）
-./target/release/sprobe -c /etc/sprobe/sprobe.toml
+# 前台调试启动（指定配置文件）
+sprobe -c /etc/sprobe/sprobe.toml
 
-# 或者通过环境变量配置
-export SPROBE_CONFIG=/etc/sprobe/sprobe.toml
-export SPROBE_TOKEN=your-secret-token
-./target/release/sprobe
-```
-
-### 3. 一键生成 Linux Systemd 守护进程服务
-
-```bash
-# 利用 sprobe 内置指令生成标准加固的 systemd unit 文件
-./target/release/sprobe -c /etc/sprobe/sprobe.toml --generate-systemd | sudo tee /etc/systemd/system/sprobe.service
-
-sudo systemctl daemon-reload
-sudo systemctl enable --now sprobe
-```
-
-### 4. 启动 Console 前端控制台
-
-```bash
+# 启动 Console 本地开发服务
 cd console
 npm install
 npm run dev
-# 浏览器访问 http://localhost:5173
+# 浏览器访问 http://localhost:5173 体验
 ```
 
 ---

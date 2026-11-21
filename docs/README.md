@@ -6,7 +6,7 @@
 
 | 文档 | 版本 | 路径 |
 | --- | --- | --- |
-| **用户使用与运维部署手册** | **v1.0** | **[USER_GUIDE.md](USER_GUIDE.md)** |
+| **用户使用与运维部署手册** | **v1.1** | **[USER_GUIDE.md](USER_GUIDE.md)** |
 | 后端开发文档 | v1.3 | [backend/rust_v1_3.md](backend/rust_v1_3.md) |
 | 前端开发文档 | v1.2 | [frontend/sprobe_v1_2.md](frontend/sprobe_v1_2.md) |
 | 机读契约 | v1.0 | [../contract/sprobe_contract_v1_0.schema.json](../contract/sprobe_contract_v1_0.schema.json) |
