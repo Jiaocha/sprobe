@@ -1,15 +1,22 @@
-// 边缘内存节流记录：限制每个 Agent 写入 KV 的频率，确保单日写操作严格低于 1000 次免费额度
-const lastKvWriteMap = new Map();
+// Sprobe 边缘端服务 - 零 KV 配额消耗保护模式 (Zero-KV-Write Guard)
+// 通过 Cloudflare Cache API 与边缘内存完全接管读写，单日 KV 写入锁定为 0，彻底免疫 429 限额超标。
+
+const ZERO_KV_WRITE_MODE = true; // 强制启用 0 写入保护
+
+const inMemoryNodesMeta = new Map();
+const inMemorySnapshots = new Map();
+const knownNodeIdsSet = new Set();
 const lastAlertSentMap = new Map();
-let cachedNodeIds = null;
 let cachedSettings = null;
 
 async function sendNotification(env, title, message) {
   try {
     let settings = cachedSettings;
-    if (!settings && env.SPROBE_KV) {
-      const raw = await env.SPROBE_KV.get('settings:global');
-      if (raw) settings = JSON.parse(raw);
+    if (!settings && env.SPROBE_KV && !ZERO_KV_WRITE_MODE) {
+      try {
+        const raw = await env.SPROBE_KV.get('settings:global');
+        if (raw) settings = JSON.parse(raw);
+      } catch (_) {}
     }
     if (!settings || !settings.notifications) return;
 
@@ -62,9 +69,8 @@ export default {
     }
 
     const cache = caches.default;
-    const cacheUrl = new URL(`/api/_cache/snapshot`, request.url);
 
-    // 1. Sprobe Agent 数据上报入口
+    // 1. Sprobe Agent 数据上报入口 (完全基于 Cache API + 内存，0 KV 写消耗)
     if (url.pathname === '/api/v1/ingest' && request.method === 'POST') {
       try {
         let bodyText = '';
@@ -84,16 +90,6 @@ export default {
         const latest = snapshots[snapshots.length - 1];
 
         if (agentId && latest) {
-          // 写入边缘 CDN Cache（基于 Cache API，不消耗 KV 写配额）
-          const singleCacheUrl = new URL(`/api/_cache/snapshot/${agentId}`, request.url);
-          const cacheResp = new Response(JSON.stringify(latest), {
-            headers: {
-              'Content-Type': 'application/json',
-              'Cache-Control': 'public, max-age=180',
-            },
-          });
-          await cache.put(singleCacheUrl.toString(), cacheResp);
-
           // 计算概览 meta
           const rxTotal = latest.network?.interfaces?.reduce((s, i) => s + (i.receive_bytes_per_second || 0), 0) || 0;
           const txTotal = latest.network?.interfaces?.reduce((s, i) => s + (i.transmit_bytes_per_second || 0), 0) || 0;
@@ -120,12 +116,28 @@ export default {
             cycle_outbound_ratio: latest.network?.cycle_outbound_ratio || 0,
           };
 
-          const metaCacheUrl = new URL(`/api/_cache/meta/${agentId}`, request.url);
-          await cache.put(metaCacheUrl.toString(), new Response(JSON.stringify(meta), {
-            headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=180' }
+          // 1. 存入边缘全局热内存 (零成本、瞬时完成)
+          inMemorySnapshots.set(agentId, latest);
+          inMemoryNodesMeta.set(agentId, meta);
+          knownNodeIdsSet.add(agentId);
+
+          // 2. 存入 Cache API (跨 Worker 实例共享，完全免费无上限)
+          const singleCacheUrl = new URL(`/api/_cache/snapshot/${agentId}`, request.url);
+          await cache.put(singleCacheUrl.toString(), new Response(JSON.stringify(latest), {
+            headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300' }
           }));
 
-          // 告警阈值检测 (带 10 分钟冷却防风暴)
+          const metaCacheUrl = new URL(`/api/_cache/meta/${agentId}`, request.url);
+          await cache.put(metaCacheUrl.toString(), new Response(JSON.stringify(meta), {
+            headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300' }
+          }));
+
+          const idsCacheUrl = new URL(`/api/_cache/ids`, request.url);
+          await cache.put(idsCacheUrl.toString(), new Response(JSON.stringify(Array.from(knownNodeIdsSet)), {
+            headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300' }
+          }));
+
+          // 3. 告警阈值检测 (10 分钟冷却防风暴)
           const nowAlert = Date.now();
           const lastAlert = lastAlertSentMap.get(agentId) || 0;
           if (nowAlert - lastAlert >= 600000) {
@@ -141,23 +153,7 @@ export default {
             }
           }
 
-          // 节流写入 KV：限制每个节点两次写入间隔至少 90 秒，确保单日写次数 < 960 次（免费限额 1000 次/天）
-          const now = Date.now();
-          const lastWrite = lastKvWriteMap.get(agentId) || 0;
-          if (env.SPROBE_KV && now - lastWrite >= 90000) {
-            lastKvWriteMap.set(agentId, now);
-            await env.SPROBE_KV.put(`snapshot:${agentId}`, JSON.stringify(latest), { expirationTtl: 86400 });
-            await env.SPROBE_KV.put(`meta:${agentId}`, JSON.stringify(meta), { expirationTtl: 86400 });
-
-            if (!cachedNodeIds) {
-              const raw = await env.SPROBE_KV.get('nodes:ids');
-              cachedNodeIds = raw ? JSON.parse(raw) : [];
-            }
-            if (!cachedNodeIds.includes(agentId)) {
-              cachedNodeIds.push(agentId);
-              await env.SPROBE_KV.put('nodes:ids', JSON.stringify(cachedNodeIds), { expirationTtl: 86400 * 7 });
-            }
-          }
+          // ZERO_KV_WRITE_MODE 为 true，完全不向 KV 写入，0 写消耗保护！
         }
 
         const resp = {
@@ -182,18 +178,16 @@ export default {
       }
     }
 
-    // 2. Sprobe 心跳接口
+    // 2. Sprobe 心跳接口 (0 KV 写消耗)
     if (url.pathname === '/api/v1/heartbeat' && request.method === 'POST') {
       try {
         const hb = await request.json();
         const agentId = hb.agent_id;
-        if (agentId && env.SPROBE_KV) {
-          const rawMeta = await env.SPROBE_KV.get(`meta:${agentId}`);
-          if (rawMeta) {
-            const meta = JSON.parse(rawMeta);
-            meta.last_seen = new Date().toISOString();
-            meta.is_online = true;
-            await env.SPROBE_KV.put(`meta:${agentId}`, JSON.stringify(meta), { expirationTtl: 86400 });
+        if (agentId) {
+          const existing = inMemoryNodesMeta.get(agentId);
+          if (existing) {
+            existing.last_seen = new Date().toISOString();
+            existing.is_online = true;
           }
         }
         return new Response(JSON.stringify({ status: 'ok', server_time: new Date().toISOString() }), {
@@ -208,22 +202,55 @@ export default {
       }
     }
 
-    // 3. 前端拉取总览数据
+    // 3. 前端拉取总览数据 (优先内存与 Cache API，免受 429 影响)
     if (url.pathname === '/api/readonly/overview' && request.method === 'GET') {
       try {
-        const ids = cachedNodeIds || (env.SPROBE_KV ? JSON.parse((await env.SPROBE_KV.get('nodes:ids')) || '[]') : []);
+        // 优先 1：读取当前 Worker 内存中的活跃节点
+        if (inMemoryNodesMeta.size > 0) {
+          return new Response(JSON.stringify(Array.from(inMemoryNodesMeta.values())), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // 优先 2：从 Cache API 读取缓存的 ID 与 Meta
+        const idsCacheUrl = new URL(`/api/_cache/ids`, request.url);
+        const cachedIdsResp = await cache.match(idsCacheUrl.toString());
+        let ids = [];
+        if (cachedIdsResp) {
+          ids = await cachedIdsResp.json();
+        } else if (knownNodeIdsSet.size > 0) {
+          ids = Array.from(knownNodeIdsSet);
+        }
+
         const list = [];
         for (const id of ids) {
-          // 优先查 Cache API
           const metaCacheUrl = new URL(`/api/_cache/meta/${id}`, request.url);
           const cached = await cache.match(metaCacheUrl.toString());
           if (cached) {
             list.push(await cached.json());
-          } else if (env.SPROBE_KV) {
-            const raw = await env.SPROBE_KV.get(`meta:${id}`);
-            if (raw) list.push(JSON.parse(raw));
           }
         }
+
+        if (list.length > 0) {
+          return new Response(JSON.stringify(list), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // 优先 3：防崩兜底：尝试从 KV 读取（带 try-catch 保护，即使 429 也直接降级）
+        if (env.SPROBE_KV) {
+          try {
+            const raw = await env.SPROBE_KV.get('nodes:ids');
+            if (raw) {
+              const kvIds = JSON.parse(raw);
+              for (const id of kvIds) {
+                const rawMeta = await env.SPROBE_KV.get(`meta:${id}`);
+                if (rawMeta) list.push(JSON.parse(rawMeta));
+              }
+            }
+          } catch (_) {}
+        }
+
         if (list.length > 0) {
           return new Response(JSON.stringify(list), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -236,21 +263,28 @@ export default {
       });
     }
 
-    // 4. 前端拉取单节点实时快照
+    // 4. 前端拉取单节点实时快照 (优先内存与 Cache API，免受 429 影响)
     if (url.pathname.startsWith('/api/readonly/nodes/') && request.method === 'GET') {
       const parts = url.pathname.split('/');
       const id = parts[parts.length - 1];
       if (id) {
         try {
-          let snapshot = null;
-          // 优先查 Cache API (零延迟、零 KV 读消耗)
-          const singleCacheUrl = new URL(`/api/_cache/snapshot/${id}`, request.url);
-          const cached = await cache.match(singleCacheUrl.toString());
-          if (cached) {
-            snapshot = await cached.json();
-          } else if (env.SPROBE_KV) {
-            const raw = await env.SPROBE_KV.get(`snapshot:${id}`);
-            if (raw) snapshot = JSON.parse(raw);
+          // 优先 1：内存直接命中
+          let snapshot = inMemorySnapshots.get(id);
+
+          // 优先 2：Cache API 命中
+          if (!snapshot) {
+            const singleCacheUrl = new URL(`/api/_cache/snapshot/${id}`, request.url);
+            const cached = await cache.match(singleCacheUrl.toString());
+            if (cached) snapshot = await cached.json();
+          }
+
+          // 优先 3：KV 兜底读取（带异常防御）
+          if (!snapshot && env.SPROBE_KV) {
+            try {
+              const raw = await env.SPROBE_KV.get(`snapshot:${id}`);
+              if (raw) snapshot = JSON.parse(raw);
+            } catch (_) {}
           }
 
           if (snapshot) {
@@ -313,18 +347,11 @@ export default {
       return false;
     }
 
-    // 6. 系统设置与测试告警接口 (受管理员安全保护)
+    // 6. 系统设置与测试告警接口 (受管理员安全保护，0 KV 写消耗)
     if (url.pathname === '/api/settings') {
       if (request.method === 'GET') {
         if (cachedSettings) {
           return new Response(JSON.stringify(cachedSettings), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        }
-        if (env.SPROBE_KV) {
-          const raw = await env.SPROBE_KV.get('settings:global');
-          if (raw) {
-            cachedSettings = JSON.parse(raw);
-            return new Response(raw, { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-          }
         }
         return new Response(JSON.stringify({}), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
@@ -343,9 +370,6 @@ export default {
         try {
           const body = await request.json();
           cachedSettings = body;
-          if (env.SPROBE_KV) {
-            await env.SPROBE_KV.put('settings:global', JSON.stringify(body));
-          }
           return new Response(JSON.stringify({ status: 'ok' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         } catch (e) {
           return new Response(JSON.stringify({ error: e.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
