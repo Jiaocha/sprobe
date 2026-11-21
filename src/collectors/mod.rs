@@ -14,3 +14,9 @@ pub use windows::*;
 
 #[cfg(target_os = "linux")]
 pub use linux::*;
+
+#[cfg(not(any(windows, target_os = "linux")))]
+pub mod fallback;
+
+#[cfg(not(any(windows, target_os = "linux")))]
+pub use fallback::*;

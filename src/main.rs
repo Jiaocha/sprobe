@@ -289,7 +289,17 @@ fn main() -> ExitCode {
 
         #[cfg(not(any(windows, target_os = "linux")))]
         let (cpu_section, memory_section, fs_section, proc_section) = {
-            panic!("当前平台尚未实现真实采集器");
+            let mut cpu = sprobe::collectors::FallbackCpuCollector::new();
+            let mem = sprobe::collectors::FallbackMemoryCollector::new();
+            let fs = sprobe::collectors::FallbackFilesystemCollector::new();
+            let proc = sprobe::collectors::FallbackProcessCollector::new();
+            (
+                cpu.collect().unwrap(),
+                mem.collect().unwrap(),
+                fs.collect().unwrap(),
+                proc.collect(config.processes.top_n, &config.processes.watch)
+                    .unwrap(),
+            )
         };
 
         let dummy_section_meta = SectionMeta {
@@ -455,6 +465,14 @@ fn main() -> ExitCode {
         sprobe::collectors::LinuxMemoryCollector::new(),
         sprobe::collectors::LinuxFilesystemCollector::new(),
         sprobe::collectors::LinuxProcessCollector::new(),
+    );
+
+    #[cfg(not(any(windows, target_os = "linux")))]
+    let (mut cpu_collector, mem_collector, fs_collector, proc_collector) = (
+        sprobe::collectors::FallbackCpuCollector::new(),
+        sprobe::collectors::FallbackMemoryCollector::new(),
+        sprobe::collectors::FallbackFilesystemCollector::new(),
+        sprobe::collectors::FallbackProcessCollector::new(),
     );
 
     // 首次采集（Warmup 基线）

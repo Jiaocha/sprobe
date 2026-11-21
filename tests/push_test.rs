@@ -18,18 +18,41 @@ impl Drop for MockServerGuard {
 
 #[test]
 fn test_push_batch_to_mock_ingest() {
-    let port = 9977;
+    // 动态选取随机可用端口
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("无法绑定临时端口");
+    let port = listener.local_addr().unwrap().port();
+    drop(listener); // 释放端口供 node 使用
+
     // 启动本地 mock ingest
-    let child = Command::new("node")
+    let child = match Command::new("node")
         .arg("scripts/mock_ingest.mjs")
         .arg(port.to_string())
         .spawn()
-        .expect("无法启动 scripts/mock_ingest.mjs");
+    {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("[SKIP] 系统未检测到 node 环境或执行失败: {e}");
+            return;
+        }
+    };
 
     let _guard = MockServerGuard { child };
 
-    // 等待服务启动就绪
-    std::thread::sleep(Duration::from_millis(600));
+    // 轮询等待服务监听就绪，最多等待 5 秒
+    let start_wait = std::time::Instant::now();
+    let mut server_ready = false;
+    while start_wait.elapsed() < Duration::from_secs(5) {
+        if std::net::TcpStream::connect(format!("127.0.0.1:{port}")).is_ok() {
+            server_ready = true;
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+
+    if !server_ready {
+        eprintln!("[SKIP] Mock 服务在 5 秒内未就绪，跳过测试");
+        return;
+    }
 
     // 读取黄金快照
     let fixture_str = include_str!("fixtures/golden_snapshot_v1_0.json");

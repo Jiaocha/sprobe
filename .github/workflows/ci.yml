@@ -23,6 +23,11 @@ jobs:
         with:
           components: clippy, rustfmt
 
+      - name: Setup Node.js (for integration test mock server)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
 
