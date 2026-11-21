@@ -1,0 +1,12 @@
+# Security & Cache headers
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), camera=(), microphone=()
+
+/api/readonly/overview
+  Cache-Control: public, max-age=15, stale-while-revalidate=15
+
+/api/*
+  Cache-Control: private, no-store, no-cache, must-revalidate

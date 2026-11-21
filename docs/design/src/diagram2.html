@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  :root{
+    --ink:#0f172a; --muted:#5b6b82; --faint:#8a99ad; --line:#dfe6f1; --bg:#f3f6fb;
+    --blue:#2563eb; --cyan:#0891b2; --green:#15803d; --amber:#b45309; --red:#b91c1c; --violet:#6d5bd0;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;width:2400px;height:1320px;overflow:hidden;background:var(--bg)}
+  body{font-family:"Microsoft YaHei","PingFang SC","Segoe UI",sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+  .canvas{width:2400px;height:1320px;padding:48px 56px 30px;display:flex;flex-direction:column;gap:18px;
+    background:
+      radial-gradient(1000px 520px at 0% 0%, #e8f0ff 0%, rgba(232,240,255,0) 60%),
+      radial-gradient(900px 500px at 100% 0%, #e6f8fb 0%, rgba(230,248,251,0) 55%),
+      var(--bg);}
+  .header{height:88px;display:flex;align-items:center;justify-content:space-between}
+  .brand{display:flex;align-items:center;gap:18px}
+  .logo{width:58px;height:58px;border-radius:17px;background:linear-gradient(145deg,#2563eb,#0891b2);color:#fff;
+    font-size:30px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 26px rgba(37,99,235,.25)}
+  h1{font-size:35px;line-height:1.05;margin:0 0 7px;letter-spacing:-.5px}
+  .sub{font-size:15.5px;color:var(--muted);margin:0}
+  .meta{display:flex;gap:9px}
+  .pill{border:1px solid #cfdcee;background:rgba(255,255,255,.8);border-radius:999px;padding:8px 13px;font-size:12.5px;font-weight:600;color:#334155;white-space:nowrap}
+  .pill.dark{background:#0b1220;color:#e2e8f0;border-color:#0b1220}
+  .top{height:770px;display:grid;grid-template-columns:1390px 1fr;gap:20px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:0 12px 30px rgba(15,23,42,.045);min-height:0}
+  .card-head{padding:19px 22px 11px;display:flex;align-items:flex-start;justify-content:space-between}
+  .eyebrow{font-size:10px;font-weight:800;letter-spacing:1.5px;color:#6b7c94}
+  h2{font-size:21px;margin:4px 0 0;letter-spacing:-.2px}
+  .badge{font-size:10.5px;color:#1d4ed8;background:#edf3ff;border:1px solid #d6e2ff;border-radius:7px;padding:4px 8px;font-weight:700;white-space:nowrap}
+  .badge.green{color:#166534;background:#eefbf2;border-color:#cdeed7}
+  .browser{border:1px solid #d8e2f0;border-radius:14px;overflow:hidden;background:#fff;margin:0 18px 18px;box-shadow:0 8px 20px rgba(15,23,42,.04)}
+  .browser-bar{height:30px;background:#f8fafc;border-bottom:1px solid #e6edf7;display:flex;align-items:center;gap:5px;padding:0 10px}
+  .browser-bar i{width:6px;height:6px;border-radius:50%;display:block;background:#d6dfec}
+  .browser-bar i:nth-child(1){background:#fca5a5}.browser-bar i:nth-child(2){background:#fcd34d}.browser-bar i:nth-child(3){background:#86efac}
+  .url{margin-left:7px;font-size:8.5px;color:#7b8da5;background:#fff;border:1px solid #e6edf7;border-radius:5px;padding:3px 7px;flex:1}
+  .app{display:grid;grid-template-columns:152px 1fr;height:640px}
+  .side{background:#0b1220;color:#94a3b8;padding:14px 12px;display:flex;flex-direction:column}
+  .side-logo{display:flex;align-items:center;gap:8px;color:#fff;font-weight:800;font-size:14px;margin:2px 4px 20px}
+  .side-logo b{width:24px;height:24px;border-radius:7px;background:linear-gradient(145deg,#3b82f6,#06b6d4);display:flex;align-items:center;justify-content:center;font-size:13px}
+  .nav{display:flex;flex-direction:column;gap:3px}
+  .nav div{font-size:10px;padding:8px 9px;border-radius:7px;display:flex;align-items:center;gap:7px}
+  .nav div.on{background:#17233a;color:#fff;box-shadow:inset 3px 0 0 #3b82f6}
+  .nav em{font-style:normal;width:12px;text-align:center;opacity:.85}
+  .side-foot{margin-top:auto;font-size:8px;color:#5f7189;line-height:1.5;padding:0 4px}
+  .main{padding:14px 16px;min-width:0;background:#fbfdff}
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+  .page-title{font-size:18px;font-weight:800;letter-spacing:-.2px}
+  .page-title span{font-size:8px;color:#64748b;font-weight:700;margin-left:6px;background:#eef2f7;border-radius:4px;padding:2px 5px;vertical-align:2px}
+  .tools{display:flex;gap:5px;align-items:center}
+  .tools .chip{font-size:8px;color:#475569;border:1px solid #e4eaf3;background:#fff;border-radius:5px;padding:4px 6px}
+  .tools .avatar{width:20px;height:20px;border-radius:50%;background:linear-gradient(145deg,#93c5fd,#67e8f9)}
+  .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+  .sc{border:1px solid #e7edf6;border-radius:9px;padding:8px 9px;background:#fff}
+  .sc .k{font-size:8px;color:#7b8da5}
+  .sc .v{font-size:21px;font-weight:800;line-height:1.2;margin-top:2px}
+  .sc .v small{font-size:8px;color:#94a3b8;font-weight:600;margin-left:3px}
+  .sc.good .v{color:#15803d}.sc.bad .v{color:#b91c1c}.sc.warn .v{color:#b45309}
+  .healthbar{display:flex;height:7px;border-radius:5px;overflow:hidden;margin-top:10px;background:#eef2f7}
+  .healthbar i{display:block;height:100%}
+  .healthbar .ok{width:64%;background:#22c55e}.healthbar .deg{width:12%;background:#f59e0b}
+  .healthbar .crit{width:8%;background:#ef4444}.healthbar .unk{width:16%;background:#94a3b8}
+  .legend{display:flex;gap:10px;font-size:7.5px;color:#7b8da5;margin-top:5px}
+  .legend b{font-weight:700}
+  .filters{display:flex;gap:5px;margin:10px 0 7px;align-items:center}
+  .filters span{font-size:8px;color:#53657c;background:#fff;border:1px solid #e4eaf3;border-radius:5px;padding:3px 7px}
+  .filters span.on{background:#eaf1ff;border-color:#c7d8ff;color:#1d4ed8;font-weight:700}
+  .filters .search{margin-left:auto;color:#94a3b8;background:#fff;border:1px solid #e4eaf3;border-radius:5px;padding:3px 26px 3px 7px}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:7.8px;color:#8a99ad;font-weight:700;text-align:left;padding:5px 6px;border-bottom:1px solid #e8eef7;background:#fbfdff}
+  td{font-size:9px;color:#334155;padding:6px 6px;border-bottom:1px solid #f0f4fa;white-space:nowrap}
+  .dot{display:inline-block;width:5px;height:5px;border-radius:50%;margin-right:4px;vertical-align:1px}
+  .dot.ok{background:#22c55e}.dot.warn{background:#f59e0b}.dot.bad{background:#ef4444}.dot.unk{background:#94a3b8}
+  .tagtiny{font-size:7.5px;border-radius:4px;padding:1.5px 4px;font-weight:700}
+  .tagtiny.ok{background:#eefbf2;color:#15803d}.tagtiny.warn{background:#fff7ed;color:#b45309}
+  .tagtiny.bad{background:#fef2f2;color:#b91c1c}.tagtiny.unk{background:#f1f5f9;color:#64748b}
+  .avat{display:inline-block;width:14px;height:14px;border-radius:4px;background:#e2e8f0;vertical-align:-3px;margin-right:5px}
+  .detail-card{display:flex;flex-direction:column}
+  .detail-inner{margin:0 16px 16px;flex:1;border:1px solid #e4ebf5;border-radius:14px;background:#fbfdff;overflow:hidden;display:flex;flex-direction:column}
+  .detail-top{padding:13px 15px 9px;display:flex;align-items:center;justify-content:space-between}
+  .node-title{font-size:16px;font-weight:800}
+  .node-sub{font-size:8px;color:#7b8da5;margin-top:2px}
+  .health-chip{font-size:8px;font-weight:700;color:#15803d;background:#eefbf2;border:1px solid #cdeed7;border-radius:5px;padding:3px 6px;white-space:nowrap}
+  .banner{margin:0 15px 8px;background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:6px 8px;font-size:8px;color:#92400e}
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:0 15px 8px}
+  .kpi{border:1px solid #e7edf6;border-radius:8px;background:#fff;padding:7px 8px}
+  .kpi .k{font-size:7px;color:#94a3b8}
+  .kpi .v{font-size:15px;font-weight:800;margin-top:2px}
+  .kpi .s{font-size:6.8px;color:#94a3b8;margin-top:2px}
+  .trend{display:grid;grid-template-columns:1.1fr .9fr;gap:6px;padding:0 15px 8px}
+  .chart{border:1px solid #e7edf6;border-radius:8px;background:#fff;padding:7px 8px}
+  .chart .ch{display:flex;align-items:center;justify-content:space-between;font-size:7.5px;color:#64748b;font-weight:700;margin-bottom:4px}
+  .chart .ch span{font-weight:500;color:#94a3b8}
+  .spark{height:37px;width:100%;display:block}
+  .bars{height:37px;display:flex;align-items:flex-end;gap:3px}
+  .bars i{display:block;flex:1;border-radius:2px 2px 0 0;background:#bfdbfe}
+  .bars i:nth-child(2n){background:#93c5fd}.bars i:nth-child(3n){background:#60a5fa}
+  .tabs{display:flex;gap:4px;padding:0 15px 7px}
+  .tabs span{font-size:7.5px;font-weight:700;color:#64748b;background:#eef2f7;border-radius:4px;padding:3px 6px}
+  .tabs span.on{background:#0b1220;color:#fff}
+  .mini-table{padding:0 15px 8px}
+  .mini-table table th,.mini-table table td{font-size:7.6px;padding:4px 5px}
+  .drawer{margin:0 15px 8px;border:1px dashed #c7d8ff;background:#f4f8ff;border-radius:8px;padding:7px 9px;display:flex;align-items:center;gap:7px}
+  .drawer b{font-size:8px;color:#1d4ed8}.drawer span{font-size:7.5px;color:#5b6b82}
+  .states{margin:7px 0 0;border-top:1px dashed #e4ebf5;padding-top:6px;display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+  .states b{font-size:7.5px;color:#7b8da5;margin-right:2px}
+  .states span{font-size:7.2px;color:#64748b;background:#f7f9fc;border:1px solid #e4eaf3;border-radius:4px;padding:2px 5px}
+  .proc{padding:0 15px 8px}
+  .proc-head{display:flex;align-items:center;justify-content:space-between;font-size:7.5px;font-weight:700;color:#64748b;margin-bottom:4px}
+  .proc-head span{font-weight:500;color:#94a3b8}
+  .stack{display:flex;height:8px;border-radius:4px;overflow:hidden;background:#eef2f7;margin-bottom:5px}
+  .stack i{display:block;height:100%}
+  .proc-list{display:flex;gap:9px;font-size:7.3px;color:#64748b}
+  .proc-list b{font-weight:700;color:#334155}
+  .events{padding:0 15px 10px;display:flex;gap:5px;flex-wrap:wrap}
+  .event{font-size:7px;color:#64748b;background:#fff;border:1px solid #e7edf6;border-radius:4px;padding:2px 5px}
+  .event b{color:#b45309}
+  .net{padding:0 15px 7px}
+  .net-head{display:flex;align-items:center;justify-content:space-between;font-size:7.5px;font-weight:700;color:#64748b;margin-bottom:3px}
+  .net-head span{font-weight:500;color:#94a3b8}
+  .net table th,.net table td{font-size:7.2px;padding:3px 5px}
+  .caps{padding:0 15px 7px;display:flex;gap:4px;flex-wrap:wrap}
+  .caps b{font-size:7.2px;color:#7b8da5;margin-right:2px}
+  .caps span{font-size:6.8px;color:#15803d;background:#eefbf2;border:1px solid #cdeed7;border-radius:4px;padding:2px 4px}
+  .caps span.off{color:#94a3b8;background:#f8fafc;border-color:#e7edf6}
+  .bottom{flex:1;display:grid;grid-template-columns:1fr;gap:0;min-height:0}
+  .flow-card{padding:15px 20px 13px}
+  .flow{display:flex;align-items:stretch;gap:0;margin-top:4px}
+  .node{flex:1;border:1px solid #e2e9f4;border-radius:12px;background:#fbfdff;padding:10px 10px 9px;min-width:0}
+  .node .ic{font-size:8px;font-weight:800;color:#1d4ed8;background:#eaf1ff;border-radius:6px;display:inline-flex;padding:3px 6px;letter-spacing:.5px}
+  .node .nt{font-size:13px;font-weight:800;margin-top:5px;white-space:nowrap}
+  .node .nd{font-size:8px;color:#6b7c94;line-height:1.4;margin-top:3px;min-height:23px}
+  .node .nf{font-size:7.2px;color:#94a3b8;border-top:1px solid #e9eff7;padding-top:4px;margin-top:5px;white-space:nowrap}
+  .arrow{width:30px;display:flex;align-items:center;justify-content:center;color:#9db0c9;font-size:16px;flex:0 0 30px}
+  .notes{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+  .note{font-size:7.8px;color:#53657c;background:#f7f9fc;border:1px solid #e4eaf3;border-radius:5px;padding:4px 7px}
+  .note b{color:#1d4ed8}
+  .cap{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+  .cap div{border:1px solid #e7edf6;background:#fbfdff;border-radius:7px;padding:6px 9px;display:flex;align-items:baseline;gap:7px}
+  .cap b{font-size:8px;color:#1d4ed8;white-space:nowrap}
+  .cap span{font-size:7.4px;color:#64748b}
+  .footer{height:24px;display:flex;align-items:flex-end;justify-content:space-between;color:#8a99ad;font-size:9px}
+</style>
+</head>
+<body>
+<div class="canvas">
+  <div class="header">
+    <div class="brand">
+      <div class="logo">S</div>
+      <div><h1>Sprobe Console · 页面与数据流</h1><p class="sub">公开总览 · 认证详情 · 只读 API · latest + 1 分钟聚合</p></div>
+    </div>
+    <div class="meta">
+      <span class="pill dark">前端 v1.2</span>
+      <span class="pill">后端 v1.3</span>
+      <span class="pill">schema 1.0</span>
+      <span class="pill">React + Vite + D1</span>
+    </div>
+  </div>
+
+  <div class="top">
+    <section class="card">
+      <div class="card-head">
+        <div><div class="eyebrow">01 / OVERVIEW · PUBLIC</div><h2>集群总览：一眼判断“哪台有问题”</h2></div>
+        <span class="badge">公开 · 脱敏白名单</span>
+      </div>
+      <div class="browser">
+        <div class="browser-bar"><i></i><i></i><i></i><div class="url">console.sprobe.dev/overview</div></div>
+        <div class="app">
+          <aside class="side">
+            <div class="side-logo"><b>S</b>Sprobe</div>
+            <nav class="nav">
+              <div class="on"><em>▦</em>总览</div>
+              <div><em>▤</em>节点</div>
+              <div><em>△</em>告警</div>
+              <div><em>⚙</em>设置</div>
+            </nav>
+            <div class="side-foot">Sprobe Console 1.0<br>schema v1.0<br>read-only</div>
+          </aside>
+          <div class="main">
+            <div class="topbar">
+              <div class="page-title">集群总览 <span>PROD · 10 NODES</span></div>
+              <div class="tools"><div class="chip">↻ 12s</div><div class="chip">☾</div><div class="chip">登录</div><div class="avatar"></div></div>
+            </div>
+            <div class="summary">
+              <div class="sc"><div class="k">节点总数</div><div class="v">10</div></div>
+              <div class="sc good"><div class="k">在线</div><div class="v">9 <small>/ 10</small></div></div>
+              <div class="sc bad"><div class="k">失联</div><div class="v">1</div></div>
+              <div class="sc warn"><div class="k">异常节点</div><div class="v">2</div></div>
+            </div>
+            <div class="healthbar"><i class="ok"></i><i class="deg"></i><i class="crit"></i><i class="unk"></i></div>
+            <div class="legend"><span><b>ok</b> 7</span><span><b>degraded</b> 1</span><span><b>critical</b> 1</span><span><b>unknown</b> 1</span><span style="margin-left:auto">健康分布 · 来自 health.status</span></div>
+            <div class="filters"><span class="on">全部</span><span>env: prod</span><span>linux</span><span>x86_64</span><span>health: ok</span><span class="search">搜索 display_name / agent_id</span></div>
+            <table>
+              <thead><tr><th>节点</th><th>OS / 架构</th><th>健康</th><th>CPU</th><th>内存</th><th>load1</th><th>uptime</th><th>最近上报</th><th>在线</th></tr></thead>
+              <tbody>
+                <tr><td><span class="avat"></span>web-01</td><td>linux · x86_64</td><td><span class="tagtiny ok">ok</span></td><td>23.2%</td><td>61.2%</td><td>1.24</td><td>10.0d</td><td>12s</td><td><span class="dot ok"></span>在线</td></tr>
+                <tr><td><span class="avat"></span>db-02</td><td>linux · x86_64</td><td><span class="tagtiny ok">ok</span></td><td>41.8%</td><td>72.4%</td><td>2.10</td><td>42.3d</td><td>18s</td><td><span class="dot ok"></span>在线</td></tr>
+                <tr><td><span class="avat"></span>edge-03</td><td>linux · aarch64</td><td><span class="tagtiny warn">degraded</span></td><td>68.1%</td><td>80.5%</td><td>4.62</td><td>8.4d</td><td>21s</td><td><span class="dot ok"></span>在线</td></tr>
+                <tr><td><span class="avat"></span>cache-04</td><td>linux · x86_64</td><td><span class="tagtiny bad">critical</span></td><td>91.4%</td><td>94.2%</td><td>8.80</td><td>3.1d</td><td>2m</td><td><span class="dot ok"></span>在线</td></tr>
+                <tr><td><span class="avat"></span>batch-05</td><td>windows · x86_64</td><td><span class="tagtiny unk">unknown</span></td><td>—</td><td>—</td><td>—</td><td>15.7d</td><td>6m</td><td><span class="dot bad"></span>失联</td></tr>
+                <tr><td><span class="avat"></span>gpu-06</td><td>linux · aarch64</td><td><span class="tagtiny ok">ok</span></td><td>12.7%</td><td>44.1%</td><td>1.02</td><td>21.8d</td><td>9s</td><td><span class="dot ok"></span>在线</td></tr>
+              </tbody>
+            </table>
+            <div class="states"><b>状态覆盖</b><span>无节点</span><span>筛选空</span><span>无权限</span><span>失联</span><span>warmup</span><span>字段缺失</span><span>partial</span><span>stale</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;padding:0 22px 12px">
+        <span class="badge green">1 汇总卡：total / online / offline / health</span>
+        <span class="badge">2 健康分布：四态不合并</span>
+        <span class="badge">3 筛选：labels / os / arch / health</span>
+        <span class="badge">4 节点表：点击进入详情</span>
+      </div>
+    </section>
+
+    <section class="card detail-card">
+      <div class="card-head">
+        <div><div class="eyebrow">02 / NODE DETAIL · AUTH</div><h2>单机详情：从 KPI 到诊断</h2></div>
+        <span class="badge green">认证 · full</span>
+      </div>
+      <div class="detail-inner">
+        <div class="detail-top">
+          <div><div class="node-title">web-01 <span style="font-size:8px;color:#94a3b8;font-weight:600">linux · x86_64 · kvm</span></div><div class="node-sub">collected_at 02:00:00Z · age 12s · snapshot 8f0e6a7c</div></div>
+          <span class="health-chip">ok · since 01:55</span>
+        </div>
+        <div class="banner">L0 · clock_adjusted=true：墙上时钟发生跳变，uptime 按单调时钟展示</div>
+        <div class="kpi-grid">
+          <div class="kpi"><div class="k">CPU</div><div class="v">23.2%</div><div class="s">usage 23.2 · iowait 1.8 · steal 0.0</div></div>
+          <div class="kpi"><div class="k">内存</div><div class="v">61.2%</div><div class="s">available 6.2 GiB</div></div>
+          <div class="kpi"><div class="k">load1</div><div class="v">1.24</div><div class="s">0.31 / core</div></div>
+          <div class="kpi"><div class="k">uptime</div><div class="v">10.0d</div><div class="s">host 864000s</div></div>
+        </div>
+        <div class="trend">
+          <div class="chart">
+            <div class="ch">CPU 模式拆分 <span>1h · 60s</span></div>
+            <svg class="spark" viewBox="0 0 200 40" preserveAspectRatio="none">
+              <defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b82f6" stop-opacity=".24"/><stop offset="1" stop-color="#3b82f6" stop-opacity="0"/></linearGradient></defs>
+              <path d="M0,31 L12,28 L24,30 L36,24 L48,26 L60,20 L72,23 L84,17 L96,19 L108,23 L120,18 L132,21 L144,14 L156,17 L168,12 L180,16 L192,13 L200,15 L200,40 L0,40 Z" fill="url(#g1)"/>
+              <path d="M0,31 L12,28 L24,30 L36,24 L48,26 L60,20 L72,23 L84,17 L96,19 L108,23 L120,18 L132,21 L144,14 L156,17 L168,12 L180,16 L192,13 L200,15" fill="none" stroke="#2563eb" stroke-width="1.8"/>
+              <path d="M0,36 L20,35 L40,36 L60,34 L80,35 L100,33 L120,34 L140,32 L160,33 L180,31 L200,32" fill="none" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="2 2"/>
+            </svg>
+            <div class="legend"><span><b>usage</b></span><span><b>iowait</b></span><span style="margin-left:auto">idle = 1 - usage - iowait - steal</span></div>
+          </div>
+          <div class="chart">
+            <div class="ch">内存构成 <span>used / cached / swap</span></div>
+            <div class="bars"><i style="height:32%"></i><i style="height:46%"></i><i style="height:55%"></i><i style="height:61%"></i><i style="height:58%"></i><i style="height:66%"></i><i style="height:71%"></i><i style="height:64%"></i><i style="height:72%"></i><i style="height:78%"></i><i style="height:74%"></i><i style="height:81%"></i><i style="height:76%"></i><i style="height:83%"></i><i style="height:79%"></i><i style="height:86%"></i></div>
+            <div class="legend"><span><b>U</b> used</span><span><b>C</b> cached</span><span><b>S</b> swap</span><span style="margin-left:auto">capability 决定是否显示</span></div>
+          </div>
+        </div>
+        <div class="tabs"><span class="on">L3 文件系统</span><span>磁盘 I/O</span><span>进程</span><span>L4 诊断</span></div>
+        <div class="mini-table">
+          <table>
+            <thead><tr><th>挂载点</th><th>类型</th><th>使用率</th><th>可用</th><th>inode</th><th>只读</th></tr></thead>
+            <tbody>
+              <tr><td>/</td><td>ext4</td><td>63.1%</td><td>84.2 GiB</td><td>18.4%</td><td>否</td></tr>
+              <tr><td>/data</td><td>xfs</td><td>88.7%</td><td>220.1 GiB</td><td>41.2%</td><td>否</td></tr>
+              <tr><td>/var/log</td><td>ext4</td><td>91.2%</td><td>1.8 GiB</td><td>7.6%</td><td>否</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="proc">
+          <div class="proc-head">进程分布 <span>count 184 · Top 5 · full only</span></div>
+          <div class="stack"><i style="width:62%;background:#22c55e"></i><i style="width:24%;background:#60a5fa"></i><i style="width:9%;background:#f59e0b"></i><i style="width:5%;background:#ef4444"></i></div>
+          <div class="proc-list"><span><b>running</b> 4</span><span><b>sleeping</b> 172</span><span><b>blocked</b> 6</span><span><b>zombie</b> 2</span><span style="margin-left:auto"><b>watch</b> nginx · postgres</span></div>
+        </div>
+        <div class="events"><span class="event"><b>event</b> clock_adjusted</span><span class="event"><b>event</b> collector_partial</span><span class="event"><b>event</b> push_retry</span><span class="event" style="margin-left:auto">events[] · 最近 10 条</span></div>
+        <div class="net">
+          <div class="net-head">网络接口 <span>仅 physical 汇总 · 无“全网合计”</span></div>
+          <table><thead><tr><th>接口</th><th>状态</th><th>收速率</th><th>发速率</th><th>错误/丢弃</th></tr></thead><tbody>
+            <tr><td>eth0</td><td><span class="dot ok"></span>up</td><td>2.4 MiB/s</td><td>0.8 MiB/s</td><td>0 / 0</td></tr>
+            <tr><td>eth1</td><td><span class="dot ok"></span>up</td><td>0.1 MiB/s</td><td>0.3 MiB/s</td><td>2 / 0</td></tr>
+          </tbody></table>
+        </div>
+        <div class="caps"><b>能力</b><span>cpu_modes</span><span>cpu_frequency</span><span>memory_available</span><span>swap</span><span>inodes</span><span>disk_io</span><span>network_speed</span><span>process_top</span><span class="off">process_io</span></div>
+        <div class="drawer"><b>L4 诊断抽屉</b><span>12 项健康检查 · 能力矩阵 · 事件 · agent_runtime（WAL / 最近推送）</span></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="bottom">
+    <section class="card flow-card">
+      <div class="card-head" style="padding:0 0 8px"><div><div class="eyebrow">03 / DATA PATH</div><h2>从 Agent 到页面：一条只读数据链</h2></div><span class="badge">至少一次 · 幂等 · 可缓存边界</span></div>
+      <div class="flow">
+        <div class="node"><span class="ic">AGENT</span><div class="nt">Sprobe Agent</div><div class="nd">采集 8 类指标，生成快照；WAL 缓冲 96 MiB</div><div class="nf">10s / 30s / 300s · 只外连</div></div>
+        <div class="arrow">→</div>
+        <div class="node"><span class="ic">CONTRACT</span><div class="nt">Contract v1.0</div><div class="nd">SectionMeta、Capabilities、Snapshot 强约束</div><div class="nf">schema_version = 1.0</div></div>
+        <div class="arrow">→</div>
+        <div class="node"><span class="ic">INGEST</span><div class="nt">Ingest API</div><div class="nd">Bearer / mTLS；批次校验、幂等与 202</div><div class="nf">batch ≤3 快照 / 256 KiB</div></div>
+        <div class="arrow">→</div>
+        <div class="node"><span class="ic">D1</span><div class="nt">D1 存储</div><div class="nd">latest 快照 + 1 分钟聚合；7 天保留</div><div class="nf">agents / batches / metrics_1m</div></div>
+        <div class="arrow">→</div>
+        <div class="node"><span class="ic">READ API</span><div class="nt">Readonly API</div><div class="nd">overview / detail / history；public/private</div><div class="nf">统一错误体 + 分页</div></div>
+        <div class="arrow">→</div>
+        <div class="node"><span class="ic">CONSOLE</span><div class="nt">Console UI</div><div class="nd">总览、详情、趋势、诊断；空态与降级</div><div class="nf">React Query · 轮询 10s</div></div>
+      </div>
+      <div class="notes">
+        <span class="note"><b>Access</b> JWT 边缘拦截 · 401/302 整页跳转</span>
+        <span class="note"><b>缓存</b> 仅公开总览 s-maxage=10；认证响应 no-store</span>
+        <span class="note"><b>online</b> 90s = 3 × 30s 周期</span>
+        <span class="note"><b>幂等</b> (agent_id, instance_id, sequence)</span>
+        <span class="note"><b>隐私</b> 公开 labels 白名单 · 不返回 PID / 挂载点 / 网卡名</span>
+      </div>
+      <div class="cap">
+        <div><b>Free 推荐</b><span>≤4–5 台；60s 批周期可至 8–10 台</span></div>
+        <div><b>10–20 台</b><span>Paid / 降低刷新频率 / 只写聚合</span></div>
+        <div><b>写入预算</b><span>单批 ≤3 快照 · 256 KiB · db.batch()</span></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="footer">
+    <span>Sprobe Console · 页面与数据流</span>
+    <span>依据 rust_v1_3.md · sprobe_v1_2.md · sprobe_contract_v1_0.schema.json</span>
+  </div>
+</div>
+</body>
+</html>

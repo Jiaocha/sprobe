@@ -1,0 +1,17 @@
+[Unit]
+Description=Sprobe Agent - Server Monitoring Daemon
+After=network.target
+
+[Service]
+Type=simple
+User=sprobe
+Group=sprobe
+ExecStart=/usr/local/bin/sprobe --config /etc/sprobe/sprobe.toml
+Restart=always
+RestartSec=5s
+LimitNOFILE=65535
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

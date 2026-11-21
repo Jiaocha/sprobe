@@ -1,0 +1,292 @@
+{
+  "schema_version": "1.0",
+  "snapshot_id": "0f4f4a0e-6d7a-4a0e-9f0e-2f6d8c1b7a11",
+  "sequence": 123456,
+  "collected_at": "2026-11-21T01:20:51.123Z",
+  "agent": {
+    "agent_id": "6f1c2d3e-4a5b-4c6d-8e9f-0a1b2c3d4e5f",
+    "instance_id": "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d",
+    "version": "1.0.0",
+    "hostname": "web-01",
+    "os": "linux",
+    "arch": "x86_64",
+    "labels": {
+      "env": "prod",
+      "role": "web"
+    }
+  },
+  "host": {
+    "hostname": "web-01",
+    "os_name": "Ubuntu 24.04.1 LTS",
+    "kernel": "6.8.0-45-generic",
+    "architecture": "x86_64",
+    "virtualization": "kvm",
+    "cpu_model": "AMD EPYC 7B13 64-Core Processor",
+    "boot_time": "2026-11-01T03:12:44Z"
+  },
+  "collection": {
+    "interval_seconds": 10,
+    "warmup": false,
+    "partial": false,
+    "capabilities": {
+      "cpu_modes": true,
+      "cpu_frequency": true,
+      "memory_available": true,
+      "swap": true,
+      "filesystem_inodes": true,
+      "disk_io_counters": true,
+      "network_speed": true,
+      "process_top": true,
+      "process_io": false
+    },
+    "unsupported_reasons": {
+      "process_io": "permission_denied"
+    }
+  },
+  "cpu": {
+    "status": "ok",
+    "quality": "measured",
+    "sampled_at": "2026-11-21T01:20:51.100Z",
+    "age_seconds": 0.023,
+    "truncated": false,
+    "errors": [],
+    "logical_count": 8,
+    "physical_count": 4,
+    "total": {
+      "usage_ratio": 0.2315,
+      "idle_ratio": 0.748,
+      "iowait_ratio": 0.018,
+      "steal_ratio": 0.0025,
+      "user_seconds_total": 184223.45,
+      "nice_seconds_total": 12.3,
+      "system_seconds_total": 22110.02,
+      "idle_seconds_total": 991234.56,
+      "iowait_seconds_total": 8123.45,
+      "irq_seconds_total": 0.0,
+      "softirq_seconds_total": 345.67,
+      "steal_seconds_total": 120.0
+    },
+    "cores": [
+      {
+        "cpu": "0",
+        "usage_ratio": 0.301,
+        "idle_ratio": 0.68,
+        "iowait_ratio": 0.019,
+        "steal_ratio": 0.0,
+        "user_seconds_total": 23110.12,
+        "nice_seconds_total": 1.2,
+        "system_seconds_total": 2870.33,
+        "idle_seconds_total": 123456.78,
+        "iowait_seconds_total": 1023.45,
+        "irq_seconds_total": 0.0,
+        "softirq_seconds_total": 42.1,
+        "steal_seconds_total": 0.0,
+        "frequency_hertz": 2450000000
+      }
+    ]
+  },
+  "memory": {
+    "status": "ok",
+    "quality": "measured",
+    "sampled_at": "2026-11-21T01:20:51.105Z",
+    "age_seconds": 0.018,
+    "errors": [],
+    "available_source": "linux_memavailable",
+    "total_bytes": 68719476736,
+    "available_bytes": 41234567168,
+    "used_bytes": 27484909568,
+    "free_bytes": 8123456716,
+    "cached_bytes": 20123456789,
+    "buffers_bytes": 123456789,
+    "usage_ratio": 0.4,
+    "dirty_bytes": 102400,
+    "writeback_bytes": 0,
+    "swap_total_bytes": 8589934592,
+    "swap_used_bytes": 123456789,
+    "swap_free_bytes": 8466477803,
+    "swap_usage_ratio": 0.0144
+  },
+  "filesystems": {
+    "status": "ok",
+    "quality": "measured",
+    "sampled_at": "2026-11-21T01:20:30.050Z",
+    "age_seconds": 21.073,
+    "truncated": false,
+    "errors": [],
+    "items": [
+      {
+        "device": "/dev/nvme0n1p2",
+        "volume_id": null,
+        "mountpoint": "/",
+        "mountpoints": [
+          "/"
+        ],
+        "fstype": "ext4",
+        "read_only": false,
+        "total_bytes": 107374182400,
+        "used_bytes": 42949672960,
+        "free_bytes": 64424509440,
+        "available_bytes": 60129542144,
+        "reserved_bytes": 4294967296,
+        "usage_ratio": 0.4167,
+        "inodes_total": 6553600,
+        "inodes_used": 812345,
+        "inodes_free": 5741255,
+        "inodes_usage_ratio": 0.1239,
+        "stale": false,
+        "quality": "measured"
+      }
+    ]
+  },
+  "disks": {
+    "status": "ok",
+    "quality": "measured",
+    "sampled_at": "2026-11-21T01:20:30.060Z",
+    "age_seconds": 21.063,
+    "truncated": false,
+    "errors": [],
+    "items": [
+      {
+        "device": "nvme0n1",
+        "disk_class": "physical",
+        "parent": null,
+        "read_bytes_total": 1234567890123,
+        "write_bytes_total": 987654321098,
+        "read_operations_total": 45678901,
+        "write_operations_total": 34567890,
+        "io_time_seconds_total": 87654.32,
+        "io_time_weighted_seconds_total": 123456.78,
+        "in_flight_operations": 2,
+        "read_bytes_per_second": 1048576.0,
+        "write_bytes_per_second": 524288.0,
+        "utilization_ratio": 0.421,
+        "read_latency_seconds": 0.00042,
+        "write_latency_seconds": 0.00061,
+        "quality": "measured"
+      }
+    ]
+  },
+  "network": {
+    "status": "ok",
+    "quality": "measured",
+    "sampled_at": "2026-11-21T01:20:51.110Z",
+    "age_seconds": 0.013,
+    "truncated": false,
+    "errors": [],
+    "interfaces": [
+      {
+        "name": "eth0",
+        "class": "physical",
+        "master": null,
+        "virtual": false,
+        "up": true,
+        "mtu": 1500,
+        "speed_bytes_per_second": 1250000000,
+        "receive_bytes_total": 987654321098,
+        "transmit_bytes_total": 876543210987,
+        "receive_packets_total": 812345678,
+        "transmit_packets_total": 712345678,
+        "receive_errors_total": 0,
+        "transmit_errors_total": 0,
+        "receive_dropped_total": 12,
+        "transmit_dropped_total": 3,
+        "receive_bytes_per_second": 12500000.0,
+        "transmit_bytes_per_second": 6250000.0,
+        "receive_utilization_ratio": 0.01,
+        "transmit_utilization_ratio": 0.005
+      }
+    ]
+  },
+  "load": {
+    "status": "ok",
+    "quality": "measured",
+    "sampled_at": "2026-11-21T01:20:51.112Z",
+    "age_seconds": 0.011,
+    "errors": [],
+    "average_1m": 1.85,
+    "average_5m": 1.72,
+    "average_15m": 1.55,
+    "average_1m_per_core": 0.2313,
+    "processes_running": 3,
+    "processes_blocked": 0,
+    "processor_queue_length": null
+  },
+  "processes": {
+    "status": "ok",
+    "quality": "measured",
+    "sampled_at": "2026-11-21T01:20:30.080Z",
+    "age_seconds": 21.043,
+    "errors": [],
+    "visibility": "full",
+    "count": 187,
+    "running_count": 2,
+    "sleeping_count": 180,
+    "blocked_count": 1,
+    "zombie_count": 0,
+    "thread_count": 642,
+    "truncated": false,
+    "top": [
+      {
+        "pid": 12345,
+        "start_time": "2026-11-20T10:11:12Z",
+        "name": "nginx",
+        "state": "sleeping",
+        "cpu_usage_ratio": 0.421,
+        "rss_bytes": 134217728
+      }
+    ],
+    "watch": [
+      {
+        "name": "nginx",
+        "present": true,
+        "count": 4,
+        "pids": [
+          12345,
+          12346,
+          12347,
+          12348
+        ]
+      }
+    ]
+  },
+  "uptime": {
+    "status": "ok",
+    "quality": "measured",
+    "sampled_at": "2026-11-21T01:20:51.118Z",
+    "age_seconds": 0.005,
+    "errors": [],
+    "host_seconds": 1712345.67,
+    "host_boot_time": "2026-11-01T03:12:44Z",
+    "agent_seconds": 86400.12,
+    "clock_adjusted": false
+  },
+  "health": {
+    "status": "degraded",
+    "status_code": 1,
+    "since": "2026-11-21T01:19:41Z",
+    "recovered_at": null,
+    "checks": [
+      {
+        "id": "disk_space",
+        "status": "degraded",
+        "severity": "warning",
+        "message": "filesystem / usage 91.2% > 90%",
+        "observed": 0.912,
+        "threshold": 0.9,
+        "since": "2026-11-21T01:19:41Z"
+      }
+    ]
+  },
+  "events": [
+    {
+      "event_id": "c1f2e3d4-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+      "type": "collector_timeout",
+      "severity": "warning",
+      "occurred_at": "2026-11-21T01:19:58Z",
+      "details": {
+        "collector": "filesystem",
+        "timeout_seconds": 2
+      }
+    }
+  ]
+}

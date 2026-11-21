@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  :root{
+    --ink:#0f172a; --muted:#5b6b82; --faint:#8a99ad;
+    --line:#dfe6f1; --bg:#f3f6fb; --card:#ffffff;
+    --blue:#2563eb; --blue2:#3b82f6; --cyan:#0891b2;
+    --green:#15803d; --amber:#b45309; --red:#b91c1c;
+    --navy:#0b1220; --violet:#6d5bd0;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;width:2400px;height:1600px;overflow:hidden;background:var(--bg)}
+  body{font-family:"Microsoft YaHei","PingFang SC","Segoe UI",sans-serif;color:var(--ink);
+       -webkit-font-smoothing:antialiased}
+  .canvas{width:2400px;height:1600px;padding:58px 64px 46px;display:flex;flex-direction:column;gap:22px;
+          background:
+            radial-gradient(1200px 600px at 8% -10%, #e7efff 0%, rgba(231,239,255,0) 60%),
+            radial-gradient(900px 520px at 100% 0%, #e9f7fb 0%, rgba(233,247,251,0) 55%),
+            var(--bg);}
+  .header{height:112px;display:flex;align-items:center;justify-content:space-between}
+  .brand{display:flex;align-items:center;gap:20px}
+  .logo{width:68px;height:68px;border-radius:20px;background:linear-gradient(145deg,#2563eb,#0891b2);
+        color:#fff;font-size:36px;font-weight:800;display:flex;align-items:center;justify-content:center;
+        box-shadow:0 14px 30px rgba(37,99,235,.26);letter-spacing:-1px}
+  h1{font-size:42px;line-height:1.05;margin:0 0 8px;letter-spacing:-.6px}
+  .sub{font-size:18px;color:var(--muted);margin:0;letter-spacing:.2px}
+  .meta{display:flex;gap:10px;align-items:center}
+  .pill{border:1px solid #cfdcee;background:rgba(255,255,255,.78);color:#334155;border-radius:999px;
+        padding:9px 15px;font-size:14px;font-weight:600;white-space:nowrap}
+  .pill.accent{background:#eaf1ff;border-color:#c7d8ff;color:#1d4ed8}
+  .grid{flex:1;display:grid;grid-template-columns:650px 760px 1fr;gap:22px;min-height:0}
+  .col{min-height:0;display:flex;flex-direction:column;gap:18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:24px;
+        box-shadow:0 12px 30px rgba(15,23,42,.045);padding:24px 26px;min-height:0}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+  .eyebrow{font-size:11px;font-weight:800;letter-spacing:1.6px;color:#6b7c94;text-transform:uppercase}
+  h2{font-size:25px;line-height:1.15;margin:5px 0 0;letter-spacing:-.2px}
+  .badge{font-size:12px;color:#1d4ed8;background:#edf3ff;border:1px solid #d6e2ff;border-radius:8px;
+         padding:5px 9px;font-weight:700;white-space:nowrap}
+  .badge.green{color:#166534;background:#eefbf2;border-color:#cdeed7}
+  .timeline{display:flex;flex-direction:column}
+  .map-item{display:grid;grid-template-columns:42px 1fr;gap:14px;padding:13px 0;border-top:1px dashed #e7edf6}
+  .map-item:first-child{border-top:0;padding-top:2px}
+  .idx{width:34px;height:34px;border-radius:11px;background:#f1f5ff;color:#2b5bd7;font-size:13px;font-weight:800;
+       display:flex;align-items:center;justify-content:center;border:1px solid #dce6ff}
+  .map-title{font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .mini{font-size:10px;font-weight:700;color:#6b7c94;background:#f5f7fb;border:1px solid #e5ebf4;border-radius:6px;padding:2px 6px}
+  .map-desc{font-size:13.5px;color:var(--muted);margin-top:4px;line-height:1.45}
+  .tags{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
+  .tag{font-size:10.5px;color:#53657c;background:#f7f9fc;border:1px solid #e4eaf3;border-radius:6px;padding:3px 6px}
+  .reading{margin-top:14px;background:#f8fafc;border:1px solid #e6edf7;border-radius:14px;padding:12px 14px}
+  .read-title{font-size:10px;font-weight:800;letter-spacing:1.2px;color:#7b8da5;margin-bottom:7px}
+  .read-row{display:flex;align-items:baseline;gap:9px;padding:4px 0;border-top:1px dashed #e7edf6}
+  .read-row:first-of-type{border-top:0}
+  .read-row b{font-size:11px;color:#334155;min-width:36px}
+  .read-row span{font-size:10.5px;color:#65758b;line-height:1.35}
+  .boundary{margin-top:10px;border-left:3px solid #2563eb;background:#f4f8ff;border-radius:0 10px 10px 0;padding:9px 12px}
+  .boundary b{display:block;font-size:10.5px;color:#1d4ed8;margin-bottom:3px}
+  .boundary span{font-size:10px;color:#5b6b82;line-height:1.45}
+  .domains{margin-top:6px;border-top:1px solid #e8eef7;padding-top:10px}
+  .domains-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+  .domains-head b{font-size:10px;font-weight:800;letter-spacing:1.2px;color:#7b8da5}
+  .domains-head span{font-size:9px;color:#94a3b8}
+  .domain-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .domain{border:1px solid #e7edf6;background:#fbfdff;border-radius:9px;padding:6px 8px}
+  .domain .dk{font-size:8px;color:#8a99ad;font-weight:700}
+  .domain .dv{font-size:14px;font-weight:800;margin-top:1px}
+  .domain .dd{font-size:7.8px;color:#7b8da5;margin-top:1px;white-space:nowrap}
+  .quality{display:flex;gap:5px;margin-top:7px;align-items:center}
+  .quality span{font-size:8px;color:#53657c;background:#f7f9fc;border:1px solid #e4eaf3;border-radius:5px;padding:3px 6px}
+  .quality b{font-size:8px;color:#1d4ed8;background:#eaf1ff;border:1px solid #c7d8ff;border-radius:5px;padding:3px 6px;margin-left:auto}
+  .data-model{margin-top:11px;border-top:1px solid #e8eef7;padding-top:9px}
+  .dm-head{display:flex;align-items:center;justify-content:space-between;font-size:9px;font-weight:800;letter-spacing:1.1px;color:#7b8da5;margin-bottom:6px}
+  .dm-head span{font-size:8px;color:#1d4ed8;background:#eaf1ff;border:1px solid #c7d8ff;border-radius:4px;padding:2px 5px}
+  .dm-pills{display:flex;gap:4px;flex-wrap:wrap}
+  .dm-pills span{font-size:8px;color:#475569;background:#f7f9fc;border:1px solid #e4eaf3;border-radius:5px;padding:3px 6px;font-family:Consolas,monospace}
+  .access{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}
+  .access-card{border-radius:8px;padding:6px 8px;border:1px solid}
+  .access-card b{font-size:8.5px;display:block}
+  .access-card span{font-size:7.6px;display:block;margin-top:2px;line-height:1.35}
+  .access-card.public{background:#f0fdf4;border-color:#cdeed7;color:#166534}
+  .access-card.private{background:#f5f3ff;border-color:#ddd6fe;color:#5b21b6}
+  .modules{font-size:8px;color:#7b8da5;margin-top:7px;line-height:1.45}
+  .version-card{margin-top:auto;background:linear-gradient(135deg,#0b1220,#15213a);border-radius:18px;color:#fff;
+                padding:18px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+  .version-card .vk{font-size:10px;letter-spacing:1.4px;color:#8fa2c4;font-weight:800}
+  .version-card .vv{font-size:22px;font-weight:800;margin-top:3px}
+  .version-card .vdesc{font-size:11.5px;color:#aebbd1;line-height:1.45;text-align:right;max-width:250px}
+  .center-flow{display:flex;flex-direction:column;gap:13px}
+  .agent-label{display:flex;align-items:center;gap:9px;font-size:10px;font-weight:800;letter-spacing:1.5px;color:#64748b}
+  .agent-label .dot{width:7px;height:7px;border-radius:50%;background:#2563eb;box-shadow:0 0 0 4px #dbeafe}
+  .flow-row{display:flex;align-items:stretch;gap:0}
+  .flow-card{flex:1;min-width:0;border:1px solid #dce5f2;border-radius:14px;background:#fbfdff;padding:11px 9px 10px;
+             display:flex;flex-direction:column;gap:5px;position:relative}
+  .flow-card .ic{width:27px;height:27px;border-radius:8px;background:#eaf1ff;color:#1d4ed8;display:flex;
+                 align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:-.3px}
+  .flow-card .ft{font-size:14px;font-weight:800;line-height:1.15;white-space:nowrap}
+  .flow-card .fd{font-size:10.5px;color:#68788e;line-height:1.35;min-height:28px}
+  .flow-card .ff{font-size:9.5px;color:#8a99ad;border-top:1px solid #e9eff7;padding-top:5px;white-space:nowrap}
+  .arrow{width:14px;display:flex;align-items:center;justify-content:center;color:#9db0c9;font-size:15px;flex:0 0 14px}
+  .branch{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:1px}
+  .branch-card{border-radius:11px;padding:9px 12px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .branch-card span{font-size:9.5px;font-weight:600;opacity:.75;margin-left:auto;white-space:nowrap}
+  .branch-card.pull{background:#ecfeff;border:1px solid #bae6fd;color:#0e7490}
+  .branch-card.push{background:#f5f3ff;border:1px solid #ddd6fe;color:#5b21b6}
+  .contract{margin-top:2px;border-radius:17px;padding:15px 17px;background:
+      linear-gradient(135deg,#0b1220 0%,#111d33 62%,#0f2b3a 100%);color:#fff;position:relative;overflow:hidden;
+      box-shadow:0 12px 24px rgba(11,18,32,.16)}
+  .contract:after{content:"";position:absolute;right:-60px;top:-80px;width:220px;height:220px;border-radius:50%;
+      background:radial-gradient(circle,#1d4ed855,#0000 70%)}
+  .contract-top{display:flex;align-items:center;justify-content:space-between;gap:12px;position:relative;z-index:1}
+  .contract-title{font-size:15px;font-weight:800;letter-spacing:.3px}
+  .contract-title span{display:block;font-size:9.5px;letter-spacing:1.3px;color:#7dd3fc;margin-bottom:3px}
+  .contract-file{font-size:9.5px;color:#8fa2c4;font-family:Consolas,monospace;white-space:nowrap}
+  .contract-pills{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;position:relative;z-index:1}
+  .cpill{font-size:10px;color:#dbeafe;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);
+         border-radius:7px;padding:5px 8px;white-space:nowrap}
+  .cpill b{color:#7dd3fc}
+  .server-row{display:flex;align-items:stretch;gap:0}
+  .server-card{flex:1;min-width:0;border:1px solid #dce5f2;border-radius:14px;background:#fff;padding:12px 11px;
+               display:flex;flex-direction:column;gap:5px}
+  .server-card .ic{width:28px;height:28px;border-radius:8px;background:#ecfdf5;color:#047857;display:flex;
+                   align-items:center;justify-content:center;font-size:10px;font-weight:800}
+  .server-card .ft{font-size:14px;font-weight:800;white-space:nowrap}
+  .server-card .fd{font-size:10.5px;color:#68788e;line-height:1.35}
+  .server-card .ff{font-size:9.5px;color:#8a99ad;border-top:1px solid #e9eff7;padding-top:5px}
+  .deploy{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:2px}
+  .deploy div{border-radius:11px;background:#f8fafc;border:1px solid #e4ebf5;padding:9px 11px}
+  .deploy b{font-size:11.5px;display:block;color:#334155}
+  .deploy span{font-size:9.5px;color:#7a8ba1;display:block;margin-top:2px;line-height:1.35}
+  .browser{border:1px solid #d8e2f0;border-radius:17px;overflow:hidden;background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.05)}
+  .browser-bar{height:35px;background:#f8fafc;border-bottom:1px solid #e6edf7;display:flex;align-items:center;gap:6px;padding:0 12px}
+  .browser-bar i{width:7px;height:7px;border-radius:50%;background:#d6dfec;display:block}
+  .browser-bar i:nth-child(1){background:#fca5a5}.browser-bar i:nth-child(2){background:#fcd34d}.browser-bar i:nth-child(3){background:#86efac}
+  .url{margin-left:8px;font-size:9.5px;color:#7b8da5;background:#fff;border:1px solid #e6edf7;border-radius:6px;padding:3px 8px;flex:1}
+  .overview{padding:12px 14px 13px}
+  .ov-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+  .ov-title{font-size:15px;font-weight:800}
+  .ov-title span{font-size:9px;color:#64748b;font-weight:600;margin-left:6px;background:#f1f5f9;padding:2px 5px;border-radius:4px}
+  .ov-actions{display:flex;gap:5px}
+  .ov-actions i{display:block;width:22px;height:22px;border-radius:6px;background:#f4f7fb;border:1px solid #e5ebf4}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:9px}
+  .kpi{border:1px solid #e7edf6;border-radius:9px;padding:7px 8px;background:#fbfdff}
+  .kpi .k{font-size:8.5px;color:#7b8da5;line-height:1}
+  .kpi .v{font-size:19px;font-weight:800;line-height:1.2;margin-top:4px}
+  .kpi .v small{font-size:8px;font-weight:600;color:#94a3b8;margin-left:3px}
+  .kpi.bad .v{color:#b91c1c}.kpi.warn .v{color:#b45309}.kpi.good .v{color:#15803d}
+  .filters{display:flex;gap:5px;margin-bottom:7px}
+  .filters span{font-size:8px;color:#53657c;background:#f7f9fc;border:1px solid #e4eaf3;border-radius:5px;padding:3px 6px}
+  .filters span.on{background:#eaf1ff;border-color:#c7d8ff;color:#1d4ed8;font-weight:700}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:8px;color:#8a99ad;font-weight:700;text-align:left;padding:4px 5px;border-bottom:1px solid #e8eef7}
+  td{font-size:8.8px;color:#334155;padding:5px 5px;border-bottom:1px solid #f0f4fa;white-space:nowrap}
+  .dot{display:inline-block;width:5px;height:5px;border-radius:50%;margin-right:4px;vertical-align:1px}
+  .dot.ok{background:#22c55e}.dot.warn{background:#f59e0b}.dot.bad{background:#ef4444}.dot.unk{background:#94a3b8}
+  .tagtiny{font-size:7.5px;border-radius:4px;padding:1.5px 4px;font-weight:700}
+  .tagtiny.ok{background:#eefbf2;color:#15803d}.tagtiny.warn{background:#fff7ed;color:#b45309}
+  .tagtiny.bad{background:#fef2f2;color:#b91c1c}.tagtiny.unk{background:#f1f5f9;color:#64748b}
+  .detail{margin-top:12px;border:1px solid #e4ebf5;border-radius:13px;padding:11px 13px;background:#fbfdff}
+  .det-top{display:flex;align-items:center;justify-content:space-between}
+  .det-name{font-size:13px;font-weight:800}
+  .det-meta{font-size:8px;color:#7b8da5}
+  .health-chip{font-size:8px;font-weight:700;color:#15803d;background:#eefbf2;border:1px solid #cdeed7;border-radius:5px;padding:2px 5px}
+  .banner{margin-top:7px;background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:5px 7px;font-size:8px;color:#92400e}
+  .mini-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:7px}
+  .mini-kpi{background:#fff;border:1px solid #e8eef7;border-radius:6px;padding:5px 6px}
+  .mini-kpi .k{font-size:7px;color:#94a3b8}.mini-kpi .v{font-size:11px;font-weight:800;margin-top:2px}
+  .layers{display:flex;gap:4px;margin-top:7px}
+  .layers span{font-size:7.5px;font-weight:700;color:#475569;background:#eef2f7;border-radius:4px;padding:3px 5px}
+  .layers span.on{background:#0b1220;color:#fff}
+  .route{margin-top:10px;font-family:Consolas,monospace;font-size:8.5px;color:#64748b;background:#f8fafc;border:1px solid #e7edf6;border-radius:7px;padding:6px 8px;line-height:1.55}
+  .route b{color:#1d4ed8}
+  .updates{height:118px;display:grid;grid-template-columns:repeat(5,1fr);gap:12px;flex:0 0 118px}
+  .upd{background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px 15px;display:flex;gap:10px;align-items:flex-start}
+  .upd .ui{width:28px;height:28px;border-radius:9px;background:#eef4ff;color:#1d4ed8;font-size:10px;font-weight:800;
+           display:flex;align-items:center;justify-content:center;flex:0 0 28px}
+  .upd b{font-size:13px;display:block;margin-top:1px}
+  .upd p{font-size:10.5px;color:#65758b;line-height:1.4;margin:4px 0 0}
+  .footer{display:flex;justify-content:space-between;color:#8a99ad;font-size:10px;letter-spacing:.2px}
+</style>
+</head>
+<body>
+<div class="canvas">
+  <div class="header">
+    <div class="brand">
+      <div class="logo">S</div>
+      <div>
+        <h1>Sprobe 更新全景</h1>
+        <p class="sub">文档功能地图 · 运行时数据流 · Console 信息架构</p>
+      </div>
+    </div>
+    <div class="meta">
+      <span class="pill accent">后端 v1.3</span>
+      <span class="pill">契约 v1.0</span>
+      <span class="pill">前端 v1.2</span>
+      <span class="pill">2026-11-21</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="col">
+      <section class="card" style="flex:1">
+        <div class="card-head">
+          <div><div class="eyebrow">01 / DOCUMENT MAP</div><h2>文档功能地图</h2></div>
+          <span class="badge">16 章 · 4223 行</span>
+        </div>
+        <div class="timeline">
+          <div class="map-item">
+            <div class="idx">01</div>
+            <div><div class="map-title">目标与范围 <span class="mini">G1–G7</span></div>
+              <div class="map-desc">8 类主机指标、Tier1 三平台、单二进制与 10 周交付</div>
+              <div class="tags"><span class="tag">CPU</span><span class="tag">内存</span><span class="tag">磁盘</span><span class="tag">网络</span><span class="tag">负载</span><span class="tag">进程</span><span class="tag">uptime</span><span class="tag">健康</span></div>
+            </div>
+          </div>
+          <div class="map-item">
+            <div class="idx">02</div>
+            <div><div class="map-title">架构与流程 <span class="mini">17 模块</span></div>
+              <div class="map-desc">调度器、采集器、规范化、健康引擎、输出缓冲</div>
+              <div class="tags"><span class="tag">Scheduler</span><span class="tag">Collector Core</span><span class="tag">Normalizer</span><span class="tag">Health</span></div>
+            </div>
+          </div>
+          <div class="map-item">
+            <div class="idx">03</div>
+            <div><div class="map-title">指标与契约 <span class="mini">schema 1.0</span></div>
+              <div class="map-desc">规范名、单位、边界；SectionMeta 与能力声明同源</div>
+              <div class="tags"><span class="tag">86 指标</span><span class="tag">17 顶层字段</span><span class="tag">10 能力键</span><span class="tag">null 语义</span></div>
+            </div>
+          </div>
+          <div class="map-item">
+            <div class="idx">04</div>
+            <div><div class="map-title">输出与可靠性 <span class="mini">Push / Pull</span></div>
+              <div class="map-desc">Prometheus、批量 JSON、重试熔断、WAL 96 MiB、1h 断网</div>
+              <div class="tags"><span class="tag">/metrics</span><span class="tag">gzip</span><span class="tag">WAL</span><span class="tag">幂等</span></div>
+            </div>
+          </div>
+          <div class="map-item">
+            <div class="idx">05</div>
+            <div><div class="map-title">安全与运维 <span class="mini">威胁模型</span></div>
+              <div class="map-desc">最小权限、回环暴露、数据最小化、日志/自监控/告警</div>
+              <div class="tags"><span class="tag">TLS 1.2+</span><span class="tag">Bearer/mTLS</span><span class="tag">12 项健康</span></div>
+            </div>
+          </div>
+          <div class="map-item">
+            <div class="idx">06</div>
+            <div><div class="map-title">测试与计划 <span class="mini">DoD</span></div>
+              <div class="map-desc">22 个故障注入、精度容差、验收 gate 与 10 周里程碑</div>
+              <div class="tags"><span class="tag">口径对照</span><span class="tag">p95</span><span class="tag">M0–M6</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="reading">
+          <div class="read-title">按角色阅读</div>
+          <div class="read-row"><b>决策者</b><span>0 执行摘要 · 1 目标范围 · 13 计划与 gate</span></div>
+          <div class="read-row"><b>开发</b><span>2 架构 · 3 流程 · 6 契约 · 7 部署</span></div>
+          <div class="read-row"><b>运维</b><span>7 部署 · 9 安全 · 10 可靠性 · 11 告警</span></div>
+        </div>
+        <div class="boundary"><b>本次边界修订</b><span>Console 独立成册 · 删除 9101/ui · FreeBSD 社区探索 · 服务端存储不在 agent 范围</span></div>
+        <div class="version-card">
+          <div><div class="vk">DOCUMENT BASELINE</div><div class="vv">v1.3</div></div>
+          <div class="vdesc">与契约 v1.0 对齐<br>删除本地 UI，边界更清晰</div>
+        </div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="card" style="flex:1;display:flex;flex-direction:column">
+        <div class="card-head">
+          <div><div class="eyebrow">02 / RUNTIME FLOW</div><h2>运行时数据流</h2></div>
+          <span class="badge green">端到端</span>
+        </div>
+        <div class="center-flow" style="flex:1">
+          <div class="agent-label"><span class="dot"></span>AGENT · 单二进制 · 只外连</div>
+          <div class="flow-row">
+            <div class="flow-card"><div class="ic">HOST</div><div class="ft">主机资源</div><div class="fd">Linux / Windows<br>macOS · x86_64 / arm64</div><div class="ff">8 类指标</div></div>
+            <div class="arrow">→</div>
+            <div class="flow-card"><div class="ic">TICK</div><div class="ft">调度器</div><div class="fd">fast 10s<br>medium 30s · slow 300s</div><div class="ff">防重入 · 抖动</div></div>
+            <div class="arrow">→</div>
+            <div class="flow-card"><div class="ic">I/O</div><div class="ft">采集器</div><div class="fd">sysinfo + 原生 API<br>超时 / panic 隔离</div><div class="ff">ok / partial / failed</div></div>
+            <div class="arrow">→</div>
+            <div class="flow-card"><div class="ic">NORM</div><div class="ft">规范化</div><div class="fd">单位、null、派生速率<br>能力与质量标记</div><div class="ff">7 类单位</div></div>
+            <div class="arrow">→</div>
+            <div class="flow-card"><div class="ic">SNAP</div><div class="ft">快照</div><div class="fd">latest + sequence<br>一次采集一份</div><div class="ff">17 顶层字段</div></div>
+          </div>
+
+          <div class="branch">
+            <div class="branch-card pull">Prometheus /metrics <span>拉取 · 只读</span></div>
+            <div class="branch-card push">Push Sink + WAL <span>推送 · 至少一次</span></div>
+          </div>
+
+          <div class="contract">
+            <div class="contract-top">
+              <div class="contract-title"><span>THE SEAM · MACHINE READABLE</span>Sprobe Contract v1.0</div>
+              <div class="contract-file">sprobe_contract_v1_0.schema.json</div>
+            </div>
+            <div class="contract-pills">
+              <div class="cpill"><b>SectionMeta</b> · 5 个必填</div>
+              <div class="cpill"><b>Capabilities</b> · 9 必填 + 1 可选</div>
+              <div class="cpill"><b>Snapshot</b> · 17 个顶层</div>
+              <div class="cpill"><b>Error</b> · code / message / request_id</div>
+            </div>
+          </div>
+
+          <div class="agent-label" style="margin-top:1px"><span class="dot" style="background:#0891b2;box-shadow:0 0 0 4px #cffafe"></span>SERVER · 契约消费 · 只读展示</div>
+          <div class="server-row">
+            <div class="server-card"><div class="ic">IN</div><div class="ft">Ingest API</div><div class="fd">批量 / 心跳<br>校验与幂等</div><div class="ff">202 + accepted</div></div>
+            <div class="arrow">→</div>
+            <div class="server-card"><div class="ic">D1</div><div class="ft">D1 存储</div><div class="fd">latest + 1m 聚合<br>7 天保留</div><div class="ff">agents / batches</div></div>
+            <div class="arrow">→</div>
+            <div class="server-card"><div class="ic">API</div><div class="ft">Readonly API</div><div class="fd">overview / detail<br>history</div><div class="ff">public / private</div></div>
+            <div class="arrow">→</div>
+            <div class="server-card"><div class="ic">UI</div><div class="ft">Console</div><div class="fd">React + Vite<br>趋势与诊断</div><div class="ff">Free ≤4–5 台</div></div>
+          </div>
+
+          <div class="deploy">
+            <div><b>A · 推送（默认）</b><span>HTTPS JSON + WAL；断网 1 小时不丢</span></div>
+            <div><b>B · 拉取</b><span>Prometheus 抓 /metrics；无补发</span></div>
+            <div><b>C · 混合</b><span>共享同一快照；按需组合</span></div>
+          </div>
+
+          <div class="domains">
+            <div class="domains-head"><b>指标域 · 8 类</b><span>规范名 · 单位 · 边界</span></div>
+            <div class="domain-grid">
+              <div class="domain"><div class="dk">CPU</div><div class="dv">23.2%</div><div class="dd">usage / iowait / steal</div></div>
+              <div class="domain"><div class="dk">内存</div><div class="dv">61.2%</div><div class="dd">available 口径</div></div>
+              <div class="domain"><div class="dk">磁盘</div><div class="dv">2 挂载点</div><div class="dd">usage / inode</div></div>
+              <div class="domain"><div class="dk">网络</div><div class="dv">4 接口</div><div class="dd">仅 physical 汇总</div></div>
+              <div class="domain"><div class="dk">负载</div><div class="dv">1.24</div><div class="dd">1m / per-core</div></div>
+              <div class="domain"><div class="dk">进程</div><div class="dv">Top 20</div><div class="dd">聚合 + watch</div></div>
+              <div class="domain"><div class="dk">uptime</div><div class="dv">10.0d</div><div class="dd">单调时钟校正</div></div>
+              <div class="domain"><div class="dk">健康</div><div class="dv">ok</div><div class="dd">12 项检查</div></div>
+            </div>
+            <div class="quality"><span>measured</span><span>derived</span><span>estimated</span><b>缺失输出 null，不伪造 0</b></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="card" style="flex:1">
+        <div class="card-head">
+          <div><div class="eyebrow">03 / CONSOLE IA</div><h2>前端信息架构</h2></div>
+          <span class="badge">React + Vite</span>
+        </div>
+        <div class="browser">
+          <div class="browser-bar"><i></i><i></i><i></i><div class="url">console.sprobe.dev/overview</div></div>
+          <div class="overview">
+            <div class="ov-top">
+              <div class="ov-title">集群总览 <span>PUBLIC</span></div>
+              <div class="ov-actions"><i></i><i></i><i></i></div>
+            </div>
+            <div class="kpis">
+              <div class="kpi"><div class="k">节点总数</div><div class="v">10</div></div>
+              <div class="kpi good"><div class="k">在线</div><div class="v">9 <small>/ 10</small></div></div>
+              <div class="kpi bad"><div class="k">严重</div><div class="v">1</div></div>
+              <div class="kpi warn"><div class="k">磁盘高</div><div class="v">2</div></div>
+            </div>
+            <div class="filters"><span class="on">全部</span><span>os: linux</span><span>arch: x86_64</span><span>health: ok</span><span>env: prod</span></div>
+            <table>
+              <thead><tr><th>节点</th><th>健康</th><th>CPU</th><th>内存</th><th>负载</th><th>最近上报</th></tr></thead>
+              <tbody>
+                <tr><td><span class="dot ok"></span>web-01</td><td><span class="tagtiny ok">ok</span></td><td>23.2%</td><td>61.2%</td><td>1.24</td><td>12s</td></tr>
+                <tr><td><span class="dot ok"></span>db-02</td><td><span class="tagtiny ok">ok</span></td><td>41.8%</td><td>72.4%</td><td>2.10</td><td>18s</td></tr>
+                <tr><td><span class="dot warn"></span>edge-03</td><td><span class="tagtiny warn">degraded</span></td><td>68.1%</td><td>80.5%</td><td>4.62</td><td>21s</td></tr>
+                <tr><td><span class="dot bad"></span>cache-04</td><td><span class="tagtiny bad">critical</span></td><td>91.4%</td><td>94.2%</td><td>8.80</td><td>2m</td></tr>
+                <tr><td><span class="dot unk"></span>batch-05</td><td><span class="tagtiny unk">unknown</span></td><td>—</td><td>—</td><td>—</td><td>6m</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="detail">
+          <div class="det-top"><div class="det-name">web-01 <span style="font-size:8px;color:#94a3b8;font-weight:600">linux · x86_64 · kvm</span></div><span class="health-chip">ok · 128s</span></div>
+          <div class="det-meta">collected_at 02:00:00Z · age 12s · /nodes/5b0c…e11</div>
+          <div class="banner">L0 · clock_adjusted=true：检测到墙上时钟跳变，开机时长按单调时钟展示</div>
+          <div class="mini-kpis">
+            <div class="mini-kpi"><div class="k">CPU</div><div class="v">23.2%</div></div>
+            <div class="mini-kpi"><div class="k">内存</div><div class="v">61.2%</div></div>
+            <div class="mini-kpi"><div class="k">load1</div><div class="v">1.24</div></div>
+            <div class="mini-kpi"><div class="k">uptime</div><div class="v">10.0d</div></div>
+          </div>
+          <div class="layers"><span class="on">L1 KPI</span><span>L2 趋势</span><span>L3 存储/进程</span><span>L4 诊断</span></div>
+        </div>
+
+        <div class="route">
+          <b>GET</b> /api/readonly/overview?view=public<br>
+          <b>GET</b> /api/readonly/nodes/{agent_id}?view=full<br>
+          <b>GET</b> /api/readonly/nodes/{agent_id}/history?window=1h&amp;step=60s
+        </div>
+
+        <div class="data-model">
+          <div class="dm-head">D1 最小模型 <span>5 表</span></div>
+          <div class="dm-pills"><span>agents</span><span>snapshots_latest</span><span>metrics_1m</span><span>ingest_batches</span><span>ingest_tokens</span></div>
+          <div class="access">
+            <div class="access-card public"><b>public 总览</b><span>脱敏白名单 · 可边缘缓存</span></div>
+            <div class="access-card private"><b>private 详情</b><span>Cloudflare Access · no-store</span></div>
+          </div>
+          <div class="modules">模块边界：api · types · format · redact · components · pages · functions · migrations</div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="updates">
+    <div class="upd"><div class="ui">01</div><div><b>契约对齐</b><p>SectionMeta 必填、能力键细粒度，快照与 schema 同源。</p></div></div>
+    <div class="upd"><div class="ui">02</div><div><b>运行态闭环</b><p>agent_runtime 提供 online、last_push、last_heartbeat、WAL 数。</p></div></div>
+    <div class="upd"><div class="ui">03</div><div><b>趋势口径</b><p>CPU 三段拆分；网络仅汇总 physical，拒绝跨类重复求和。</p></div></div>
+    <div class="upd"><div class="ui">04</div><div><b>容量重算</b><p>Free 推荐 ≤4–5 台；10–20 台 Paid；批次 ≤3 快照 / 256 KiB。</p></div></div>
+    <div class="upd"><div class="ui">05</div><div><b>安全与幂等</b><p>Access 401/302、公开 labels 白名单、ingest_tokens 与幂等键。</p></div></div>
+  </div>
+
+  <div class="footer">
+    <span>Sprobe · 文档功能与前端全景</span>
+    <span>依据 rust_v1_3.md · sprobe_v1_2.md · sprobe_contract_v1_0.schema.json</span>
+  </div>
+</div>
+</body>
+</html>

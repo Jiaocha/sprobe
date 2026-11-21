@@ -1,0 +1,47 @@
+schema_version = "1.0"
+
+[agent]
+hostname = "server-node-01"
+labels = { group = "Production", provider = "Cloud VPS" }
+
+[collect]
+fast_interval_seconds = 10
+slow_interval_seconds = 30
+timeout_ms = 3000
+
+[collect.processes]
+enabled = true
+max_count = 100
+top_n = 10
+sort_by = "cpu"
+
+[collect.network]
+ignore_virtual = true
+
+[collect.storage]
+mount_allowlist = ["/", "/home", "/var"]
+
+[pipeline]
+flush_interval_ms = 1000
+batch_size = 50
+worker_threads = 2
+
+[pipeline.circuit_breaker]
+consecutive_failures = 5
+cooldown_seconds = 30
+half_open_max_trials = 3
+
+[wal]
+enabled = true
+dir = "/var/lib/sprobe/wal"
+max_bytes = 104857600
+fsync = "batch"
+
+[output.push]
+enabled = true
+endpoint = "https://sprobe-console.pages.dev/api/v1/ingest"
+format = "json"
+timeout_ms = 5000
+compression = "none"
+auth_header = "Authorization"
+auth_token = ""
