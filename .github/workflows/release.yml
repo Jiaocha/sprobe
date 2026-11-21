@@ -9,8 +9,25 @@ permissions:
   contents: write
 
 jobs:
+  create-release:
+    name: Ensure GitHub Release Exists
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view ${{ github.ref_name }} || \
+          gh release create ${{ github.ref_name }} \
+            --title "Sprobe ${{ github.ref_name }}" \
+            --notes "Sprobe ${{ github.ref_name }} - Multi-architecture automated cross-compilation release"
+
   build-and-release:
     name: Build & Upload (${{ matrix.target }})
+    needs: create-release
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -45,7 +62,7 @@ jobs:
 
   publish-assets:
     name: Publish Release Assets & Summary
-    needs: build-and-release
+    needs: [create-release, build-and-release]
     if: always()
     runs-on: ubuntu-latest
     steps:

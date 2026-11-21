@@ -11,7 +11,7 @@ impl FallbackCpuCollector {
     pub fn collect(&mut self) -> Result<CpuSection, String> {
         let meta = SectionMeta {
             status: SectionStatus::Ok,
-            quality: Quality::Degraded,
+            quality: Quality::Estimated,
             sampled_at: Utc::now(),
             age_seconds: 0.0,
             errors: Vec::new(),
@@ -19,11 +19,21 @@ impl FallbackCpuCollector {
 
         Ok(CpuSection {
             meta,
-            total: CpuStat {
+            logical_count: 2,
+            physical_count: 1,
+            total: CpuTotal {
                 usage_ratio: 0.05,
-                user_ratio: 0.03,
-                system_ratio: 0.02,
-                iowait_ratio: None,
+                idle_ratio: 0.95,
+                iowait_ratio: 0.0,
+                steal_ratio: 0.0,
+                user_seconds_total: 10.0,
+                nice_seconds_total: 0.0,
+                system_seconds_total: 5.0,
+                idle_seconds_total: 200.0,
+                iowait_seconds_total: 0.0,
+                irq_seconds_total: 0.0,
+                softirq_seconds_total: 0.0,
+                steal_seconds_total: 0.0,
             },
             cores: Vec::new(),
         })
@@ -40,7 +50,7 @@ impl FallbackMemoryCollector {
     pub fn collect(&self) -> Result<MemorySection, String> {
         let meta = SectionMeta {
             status: SectionStatus::Ok,
-            quality: Quality::Degraded,
+            quality: Quality::Estimated,
             sampled_at: Utc::now(),
             age_seconds: 0.0,
             errors: Vec::new(),
@@ -48,12 +58,20 @@ impl FallbackMemoryCollector {
 
         Ok(MemorySection {
             meta,
+            available_source: "fallback".to_string(),
             total_bytes: 8 * 1024 * 1024 * 1024,
             available_bytes: 4 * 1024 * 1024 * 1024,
             used_bytes: 4 * 1024 * 1024 * 1024,
+            free_bytes: 4 * 1024 * 1024 * 1024,
+            cached_bytes: 0,
+            buffers_bytes: 0,
             usage_ratio: 0.5,
-            swap_total_bytes: None,
-            swap_used_bytes: None,
+            dirty_bytes: 0,
+            writeback_bytes: 0,
+            swap_total_bytes: 0,
+            swap_used_bytes: 0,
+            swap_free_bytes: 0,
+            swap_usage_ratio: Some(0.0),
         })
     }
 }
@@ -68,7 +86,7 @@ impl FallbackFilesystemCollector {
     pub fn collect(&self) -> Result<FilesystemsSection, String> {
         let meta = SectionMeta {
             status: SectionStatus::Ok,
-            quality: Quality::Degraded,
+            quality: Quality::Estimated,
             sampled_at: Utc::now(),
             age_seconds: 0.0,
             errors: Vec::new(),
@@ -92,7 +110,7 @@ impl FallbackProcessCollector {
     pub fn collect(&self, _top_n: usize, _watch: &[String]) -> Result<ProcessesSection, String> {
         let meta = SectionMeta {
             status: SectionStatus::Ok,
-            quality: Quality::Degraded,
+            quality: Quality::Estimated,
             sampled_at: Utc::now(),
             age_seconds: 0.0,
             errors: Vec::new(),
