@@ -13,6 +13,7 @@ dist/
 
 # Local scratch and generated output
 .build/
+.release_dist/
 *.log
 *.tsbuildinfo
 coverage/
