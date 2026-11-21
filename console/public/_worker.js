@@ -278,7 +278,42 @@ export default {
       });
     }
 
-    // 5. 系统设置与测试告警接口
+    // 5. 管理员身份安全认证接口
+    if (url.pathname === '/api/auth/verify' && request.method === 'POST') {
+      try {
+        const body = await request.json();
+        const expected = env.ADMIN_PASSWORD || 'sprobe2026';
+        if (body && body.password && body.password.trim() === expected) {
+          return new Response(JSON.stringify({ success: true, token: expected }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        return new Response(JSON.stringify({ success: false, message: '管理员密码不正确' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (e) {
+        return new Response(JSON.stringify({ success: false, error: e.message }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    // 辅助安全鉴权函数
+    function isAuthorizedAdmin(req, environment) {
+      const authHeader = req.headers.get('Authorization') || '';
+      const expected = environment.ADMIN_PASSWORD || 'sprobe2026';
+      if (authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7).trim();
+        if (token === expected || token === (environment.ADMIN_TOKEN || '')) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // 6. 系统设置与测试告警接口 (受管理员安全保护)
     if (url.pathname === '/api/settings') {
       if (request.method === 'GET') {
         if (cachedSettings) {
@@ -295,6 +330,16 @@ export default {
       }
 
       if (request.method === 'POST') {
+        if (!isAuthorizedAdmin(request, env)) {
+          return new Response(JSON.stringify({
+            error: 'unauthorized',
+            message: '安全设置已开启：公开演示环境禁止未经授权的写入操作。请先在控制台验证管理员口令。'
+          }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
         try {
           const body = await request.json();
           cachedSettings = body;
@@ -309,6 +354,16 @@ export default {
     }
 
     if (url.pathname === '/api/alerts/test' && request.method === 'POST') {
+      if (!isAuthorizedAdmin(request, env)) {
+        return new Response(JSON.stringify({
+          error: 'unauthorized',
+          message: '安全设置已开启：公开演示环境禁止未经授权的告警测试。请先在控制台验证管理员口令。'
+        }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       try {
         const body = await request.json();
         if (body.notifications) {

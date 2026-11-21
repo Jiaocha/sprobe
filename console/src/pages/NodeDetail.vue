@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getManagedNodeDetail, updateNode, deleteNode, type NodeFormData } from '../utils/storage'
+import { checkAdmin } from '../utils/auth'
 import ServerModal from '../components/ServerModal.vue'
 import type { NodeDetailResponse } from '../types/contract'
 import {
@@ -166,21 +167,23 @@ function fallbackToMock() {
 
 function openEditModal() {
   if (!detail.value) return
-  const sn = detail.value.snapshot
-  editingNode.value = {
-    agent_id: sn.agent.agent_id,
-    hostname: sn.agent.hostname,
-    display_name: sn.host.hostname,
-    os: (sn.agent.os as 'linux' | 'windows' | 'darwin') || 'linux',
-    arch: sn.agent.arch || 'x86_64',
-    region: sn.agent.labels?.region || 'US-West',
-    group: sn.agent.labels?.group || '默认集群',
-    cycle_start_day: 1,
-    monthly_limit_gib: sn.network?.cycle_limit_bytes
-      ? Math.round(sn.network.cycle_limit_bytes / (1024 * 1024 * 1024))
-      : 1024,
-  }
-  isEditModalOpen.value = true
+  checkAdmin(() => {
+    const sn = detail.value!.snapshot
+    editingNode.value = {
+      agent_id: sn.agent.agent_id,
+      hostname: sn.agent.hostname,
+      display_name: sn.host.hostname,
+      os: (sn.agent.os as 'linux' | 'windows' | 'darwin') || 'linux',
+      arch: sn.agent.arch || 'x86_64',
+      region: sn.agent.labels?.region || 'US-West',
+      group: sn.agent.labels?.group || '默认集群',
+      cycle_start_day: 1,
+      monthly_limit_gib: sn.network?.cycle_limit_bytes
+        ? Math.round(sn.network.cycle_limit_bytes / (1024 * 1024 * 1024))
+        : 1024,
+    }
+    isEditModalOpen.value = true
+  }, '修改服务器配置需要管理员权限。请输入管理密码以解锁。')
 }
 
 function handleSaveEdit(data: NodeFormData) {
@@ -192,7 +195,9 @@ function handleSaveEdit(data: NodeFormData) {
 }
 
 function handleDeleteCurrent() {
-  showDeleteDialog.value = true
+  checkAdmin(() => {
+    showDeleteDialog.value = true
+  }, '下线或删除服务器属于高危操作，需要管理员权限。请输入管理密码以继续。')
 }
 
 function executeDeleteCurrent() {

@@ -32,7 +32,9 @@ function getAllFiles(dir, base = '') {
     if (stat.isDirectory()) {
       results = results.concat(getAllFiles(fullPath, relPath));
     } else {
-      results.push({ fullPath, relPath: '/' + relPath });
+      if (item !== '_worker.js') {
+        results.push({ fullPath, relPath: '/' + relPath });
+      }
     }
   }
   return results;

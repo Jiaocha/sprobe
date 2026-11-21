@@ -11,6 +11,7 @@ import {
   getDeletedIds,
   type NodeFormData,
 } from '../utils/storage'
+import { checkAdmin, isAdmin } from '../utils/auth'
 import {
   Server,
   Activity,
@@ -35,6 +36,7 @@ import {
   Edit2,
   Trash2,
   AlertCircle,
+  Lock,
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -114,29 +116,33 @@ onUnmounted(() => {
   }
 })
 
-// 打开添加弹窗
+// 打开添加弹窗 (受安全权限保护)
 function openAddModal() {
-  modalMode.value = 'add'
-  editingNode.value = undefined
-  isModalOpen.value = true
+  checkAdmin(() => {
+    modalMode.value = 'add'
+    editingNode.value = undefined
+    isModalOpen.value = true
+  }, '添加新服务器需要管理员权限。请输入管理密码以解锁。')
 }
 
-// 打开编辑弹窗
+// 打开编辑弹窗 (受安全权限保护)
 function openEditModal(node: NodeOverviewItem, e?: Event) {
   if (e) e.stopPropagation()
-  modalMode.value = 'edit'
-  editingNode.value = {
-    agent_id: node.agent_id,
-    hostname: node.hostname,
-    display_name: node.display_name,
-    os: (node.os as 'linux' | 'windows' | 'darwin') || 'linux',
-    arch: node.arch || 'x86_64',
-    region: node.labels?.region || 'US-West',
-    group: node.labels?.group || '默认集群',
-    cycle_start_day: 1,
-    monthly_limit_gib: node.cycle_limit_bytes ? Math.round(node.cycle_limit_bytes / (1024 * 1024 * 1024)) : 1024,
-  }
-  isModalOpen.value = true
+  checkAdmin(() => {
+    modalMode.value = 'edit'
+    editingNode.value = {
+      agent_id: node.agent_id,
+      hostname: node.hostname,
+      display_name: node.display_name,
+      os: (node.os as 'linux' | 'windows' | 'darwin') || 'linux',
+      arch: node.arch || 'x86_64',
+      region: node.labels?.region || 'US-West',
+      group: node.labels?.group || '默认集群',
+      cycle_start_day: 1,
+      monthly_limit_gib: node.cycle_limit_bytes ? Math.round(node.cycle_limit_bytes / (1024 * 1024 * 1024)) : 1024,
+    }
+    isModalOpen.value = true
+  }, '编辑服务器配置需要管理员权限。请输入管理密码以解锁。')
 }
 
 // 保存节点 (添加或更新)
@@ -155,10 +161,12 @@ function handleSaveNode(data: NodeFormData) {
   }
 }
 
-// 触发内置删除弹窗
+// 触发内置删除弹窗 (受安全权限保护)
 function confirmDelete(agentId: string, hostname: string, e?: Event) {
   if (e) e.stopPropagation()
-  nodeToDelete.value = { id: agentId, hostname }
+  checkAdmin(() => {
+    nodeToDelete.value = { id: agentId, hostname }
+  }, '下线或删除服务器属于高危操作，需要管理员权限。请输入管理密码以继续。')
 }
 
 // 确认执行删除
@@ -282,6 +290,27 @@ const filteredNodes = computed(() => {
 
 <template>
   <div class="space-y-6">
+    <!-- 访客演示模式安全只读提醒横幅 -->
+    <div
+      v-if="!isAdmin"
+      class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 text-xs text-amber-900 shadow-xs dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200"
+    >
+      <div class="flex items-center gap-2.5">
+        <Lock class="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+        <div>
+          <span class="font-bold">演示安全保护已开启：</span>
+          <span>当前为公开演示环境（只读）。为避免误删节点或篡改告警，服务器管理与系统配置已加锁。</span>
+        </div>
+      </div>
+      <button
+        @click="checkAdmin(undefined, '输入管理员密码即可解锁所有服务器管理与系统配置操作。')"
+        class="inline-flex items-center gap-1 font-semibold text-brand-700 hover:text-brand-800 dark:text-brand-300 dark:hover:text-brand-200 underline whitespace-nowrap cursor-pointer ml-auto sm:ml-0"
+      >
+        <span>输入口令解锁</span>
+        <ChevronRight class="h-3 w-3" />
+      </button>
+    </div>
+
     <!-- 顶部汇总统计卡片 -->
     <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
       <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">

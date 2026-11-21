@@ -11,13 +11,25 @@ import {
   Shield,
   Layers,
   AlertTriangle,
+  Lock,
+  ShieldCheck,
 } from 'lucide-vue-next'
 import { getStoredSettings, saveStoredSettings, resetNodesToDefault, type SiteSettings } from '../utils/storage'
+import {
+  checkAdmin,
+  isAdmin,
+  getAdminHeaders,
+  setAdminPassword,
+  DEFAULT_ADMIN_PASSWORD,
+  logoutAdmin,
+} from '../utils/auth'
 
 const settings = ref<SiteSettings>(getStoredSettings())
 const isSaved = ref(false)
 const copiedToken = ref(false)
 const resetConfirmed = ref(false)
+const newAdminPass = ref('')
+const passChangeMsg = ref('')
 
 onMounted(() => {
   settings.value = getStoredSettings()
@@ -27,53 +39,86 @@ const isTestingAlert = ref(false)
 const testAlertResult = ref<string | null>(null)
 
 async function handleSave() {
-  saveStoredSettings(settings.value)
-  // 同步提交到 Cloudflare 边缘端存储
-  try {
-    await fetch('/api/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(settings.value),
-    })
-  } catch (_) {}
+  checkAdmin(async () => {
+    saveStoredSettings(settings.value)
+    // 同步提交到 Cloudflare 边缘端存储 (附带管理员认证头)
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAdminHeaders(),
+        },
+        body: JSON.stringify(settings.value),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        testAlertResult.value = `保存警告: ${err.message || '远程同步受限'}`
+      }
+    } catch (_) {}
 
-  isSaved.value = true
-  setTimeout(() => {
-    isSaved.value = false
-  }, 2500)
+    isSaved.value = true
+    setTimeout(() => {
+      isSaved.value = false
+    }, 2500)
+  }, '保存系统与告警设置需要管理员权限。请输入管理密码以继续。')
 }
 
 async function handleTestAlert() {
-  isTestingAlert.value = true
-  testAlertResult.value = null
-  try {
-    const res = await fetch('/api/alerts/test', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notifications: settings.value.notifications }),
-    })
-    if (res.ok) {
-      testAlertResult.value = '✓ 测试告警已通过边缘节点成功发出！'
-    } else {
-      testAlertResult.value = '⚠️ 发送失败，请检查 Webhook 或 Bot 配置'
+  checkAdmin(async () => {
+    isTestingAlert.value = true
+    testAlertResult.value = null
+    try {
+      const res = await fetch('/api/alerts/test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAdminHeaders(),
+        },
+        body: JSON.stringify({ notifications: settings.value.notifications }),
+      })
+      if (res.ok) {
+        testAlertResult.value = '✓ 测试告警已通过边缘节点成功发出！'
+      } else {
+        const err = await res.json().catch(() => ({}))
+        testAlertResult.value = `⚠️ 发送失败: ${err.message || '请检查 Webhook 或 Bot 配置'}`
+      }
+    } catch (e: any) {
+      testAlertResult.value = `⚠️ 发送出错: ${e.message}`
+    } finally {
+      isTestingAlert.value = false
+      setTimeout(() => {
+        testAlertResult.value = null
+      }, 4000)
     }
-  } catch (e: any) {
-    testAlertResult.value = `⚠️ 发送出错: ${e.message}`
-  } finally {
-    isTestingAlert.value = false
+  }, '触发测试告警需要管理员权限。请输入管理密码以继续。')
+}
+
+function handleUpdateAdminPassword() {
+  checkAdmin(() => {
+    const val = newAdminPass.value.trim()
+    if (!val || val.length < 6) {
+      passChangeMsg.value = '⚠️ 新密码长度不能少于 6 位'
+      return
+    }
+    setAdminPassword(val)
+    passChangeMsg.value = '✓ 管理员密码已成功修改并在当前控制台生效！'
+    newAdminPass.value = ''
     setTimeout(() => {
-      testAlertResult.value = null
-    }, 4000)
-  }
+      passChangeMsg.value = ''
+    }, 3500)
+  }, '修改管理员口令需要先验证当前身份。')
 }
 
 function generateRandomToken() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-  let result = 'sprobe-'
-  for (let i = 0; i < 24; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  settings.value.globalToken = result
+  checkAdmin(() => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    let result = 'sprobe-'
+    for (let i = 0; i < 24; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    settings.value.globalToken = result
+  }, '重新生成全局 Token 需要管理员权限。')
 }
 
 function copyToken() {
@@ -85,13 +130,15 @@ function copyToken() {
 }
 
 function handleResetData() {
-  if (confirm('确定要恢复默认预设的服务器节点与模拟数据吗？您自建的测试节点将被重置。')) {
-    resetNodesToDefault()
-    resetConfirmed.value = true
-    setTimeout(() => {
-      resetConfirmed.value = false
-    }, 2500)
-  }
+  checkAdmin(() => {
+    if (confirm('确定要恢复默认预设的服务器节点与模拟数据吗？您自建的测试节点将被重置。')) {
+      resetNodesToDefault()
+      resetConfirmed.value = true
+      setTimeout(() => {
+        resetConfirmed.value = false
+      }, 2500)
+    }
+  }, '重置集群服务器数据属于高危操作，需要管理员权限。')
 }
 </script>
 
@@ -120,6 +167,77 @@ function handleResetData() {
           <Save v-else class="h-4 w-4" />
           <span>{{ isSaved ? '设置已保存' : '保存所有设置' }}</span>
         </button>
+      </div>
+    </div>
+
+    <!-- 0. 演示环境安全与管理员权限设置卡片 -->
+    <div class="rounded-xl border border-amber-200 bg-white p-6 shadow-sm dark:border-amber-900/60 dark:bg-slate-900 space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center space-x-2">
+          <Shield class="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">演示环境安全与管理权限控制</h2>
+        </div>
+        <div class="flex items-center gap-2">
+          <span
+            :class="[
+              'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold',
+              isAdmin
+                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300'
+                : 'bg-amber-50 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300'
+            ]"
+          >
+            <ShieldCheck v-if="isAdmin" class="h-3 w-3 text-emerald-500" />
+            <Lock v-else class="h-3 w-3 text-amber-500" />
+            {{ isAdmin ? '管理员已解锁' : '访客演示模式 (只读)' }}
+          </span>
+          <button
+            v-if="isAdmin"
+            @click="logoutAdmin"
+            class="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 underline cursor-pointer"
+          >
+            退出登录
+          </button>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+        <p>
+          在公开在线演示环境下，Sprobe 控制台已开启<strong>防恶意篡改安全保护</strong>。普通访客可自由浏览全部服务器的指标、图表与全球延迟；但<strong>添加服务器、修改配置、下线节点以及保存告警与测试通知</strong>已受到管理员口令保护。
+        </p>
+      </div>
+
+      <!-- 口令修改区域 -->
+      <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div class="flex-1 w-full max-w-sm">
+            <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+              修改管理员密码 (自定义口令)
+            </label>
+            <div class="flex items-center gap-2">
+              <input
+                v-model="newAdminPass"
+                type="password"
+                placeholder="输入新密码 (至少6位)"
+                class="flex-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-brand-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              />
+              <button
+                @click="handleUpdateAdminPassword"
+                class="rounded-md bg-slate-800 hover:bg-slate-900 text-white dark:bg-slate-700 dark:hover:bg-slate-600 px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer"
+              >
+                更新密码
+              </button>
+            </div>
+          </div>
+
+          <div class="text-[11px] text-slate-400 self-end sm:self-center">
+            <span>当前默认演示口令: </span>
+            <code class="font-mono font-semibold text-brand-600 dark:text-brand-400">{{ DEFAULT_ADMIN_PASSWORD }}</code>
+          </div>
+        </div>
+
+        <div v-if="passChangeMsg" class="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+          {{ passChangeMsg }}
+        </div>
       </div>
     </div>
 
