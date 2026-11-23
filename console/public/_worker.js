@@ -1,7 +1,7 @@
 // Sprobe 边缘端服务 - 零 KV 配额消耗保护模式 (Zero-KV-Write Guard)
-// 通过 Cloudflare Cache API 与边缘内存完全接管读写，单日 KV 写入锁定为 0，彻底免疫 429 限额超标。
+// 通过 Cloudflare Cache API 与边缘内存完全接管读写，彻底切断所有 KV 交互（0 写、0 读），永久免疫 429 配额耗尽。
 
-const ZERO_KV_WRITE_MODE = true; // 强制启用 0 写入保护
+const ZERO_KV_MODE = true; // 强制启用 0 KV 模式（禁止任何 KV 读写）
 
 const inMemoryNodesMeta = new Map();
 const inMemorySnapshots = new Map();
@@ -12,12 +12,6 @@ let cachedSettings = null;
 async function sendNotification(env, title, message) {
   try {
     let settings = cachedSettings;
-    if (!settings && env.SPROBE_KV && !ZERO_KV_WRITE_MODE) {
-      try {
-        const raw = await env.SPROBE_KV.get('settings:global');
-        if (raw) settings = JSON.parse(raw);
-      } catch (_) {}
-    }
     if (!settings || !settings.notifications) return;
 
     const notif = settings.notifications;
@@ -70,7 +64,7 @@ export default {
 
     const cache = caches.default;
 
-    // 1. Sprobe Agent 数据上报入口 (完全基于 Cache API + 内存，0 KV 写消耗)
+    // 1. Sprobe Agent 数据上报入口 (完全基于 Cache API + 内存，0 KV 消耗)
     if (url.pathname === '/api/v1/ingest' && request.method === 'POST') {
       try {
         let bodyText = '';
@@ -152,8 +146,6 @@ export default {
               await sendNotification(env, `服务器高内存告警: ${meta.hostname}`, `内存使用率已达 ${(meta.memory_usage_ratio * 100).toFixed(1)}% (警戒阈值: ${(memThresh * 100).toFixed(0)}%)`);
             }
           }
-
-          // ZERO_KV_WRITE_MODE 为 true，完全不向 KV 写入，0 写消耗保护！
         }
 
         const resp = {
@@ -178,7 +170,7 @@ export default {
       }
     }
 
-    // 2. Sprobe 心跳接口 (0 KV 写消耗)
+    // 2. Sprobe 心跳接口 (0 KV 消耗)
     if (url.pathname === '/api/v1/heartbeat' && request.method === 'POST') {
       try {
         const hb = await request.json();
@@ -236,26 +228,6 @@ export default {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
-
-        // 优先 3：防崩兜底：尝试从 KV 读取（带 try-catch 保护，即使 429 也直接降级）
-        if (env.SPROBE_KV) {
-          try {
-            const raw = await env.SPROBE_KV.get('nodes:ids');
-            if (raw) {
-              const kvIds = JSON.parse(raw);
-              for (const id of kvIds) {
-                const rawMeta = await env.SPROBE_KV.get(`meta:${id}`);
-                if (rawMeta) list.push(JSON.parse(rawMeta));
-              }
-            }
-          } catch (_) {}
-        }
-
-        if (list.length > 0) {
-          return new Response(JSON.stringify(list), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
       } catch (_) {}
 
       return new Response(JSON.stringify([]), {
@@ -263,7 +235,7 @@ export default {
       });
     }
 
-    // 4. 前端拉取单节点实时快照 (优先内存与 Cache API，免受 429 影响)
+    // 4. 前端拉取单节点实时快照 (优先内存与 Cache API)
     if (url.pathname.startsWith('/api/readonly/nodes/') && request.method === 'GET') {
       const parts = url.pathname.split('/');
       const id = parts[parts.length - 1];
@@ -277,14 +249,6 @@ export default {
             const singleCacheUrl = new URL(`/api/_cache/snapshot/${id}`, request.url);
             const cached = await cache.match(singleCacheUrl.toString());
             if (cached) snapshot = await cached.json();
-          }
-
-          // 优先 3：KV 兜底读取（带异常防御）
-          if (!snapshot && env.SPROBE_KV) {
-            try {
-              const raw = await env.SPROBE_KV.get(`snapshot:${id}`);
-              if (raw) snapshot = JSON.parse(raw);
-            } catch (_) {}
           }
 
           if (snapshot) {
@@ -347,10 +311,16 @@ export default {
       return false;
     }
 
-    // 6. 系统设置与测试告警接口 (受管理员安全保护，0 KV 写消耗)
+    // 6. 系统设置与测试告警接口 (受管理员安全保护，基于 Cache API 与内存，0 KV 消耗)
     if (url.pathname === '/api/settings') {
       if (request.method === 'GET') {
         if (cachedSettings) {
+          return new Response(JSON.stringify(cachedSettings), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        const settingsCacheUrl = new URL(`/api/_cache/settings`, request.url);
+        const cached = await cache.match(settingsCacheUrl.toString());
+        if (cached) {
+          cachedSettings = await cached.json();
           return new Response(JSON.stringify(cachedSettings), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
         return new Response(JSON.stringify({}), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -370,6 +340,10 @@ export default {
         try {
           const body = await request.json();
           cachedSettings = body;
+          const settingsCacheUrl = new URL(`/api/_cache/settings`, request.url);
+          await cache.put(settingsCacheUrl.toString(), new Response(JSON.stringify(body), {
+            headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=2592000' }
+          }));
           return new Response(JSON.stringify({ status: 'ok' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         } catch (e) {
           return new Response(JSON.stringify({ error: e.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -408,3 +382,4 @@ export default {
     return response;
   },
 };
+
